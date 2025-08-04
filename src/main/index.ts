@@ -1,0 +1,251 @@
+import { app, shell, BrowserWindow, ipcMain } from 'electron';
+import { electronApp, is, optimizer } from '@electron-toolkit/utils';
+import { join } from 'node:path';
+import { getPort } from 'get-port-please';
+import { startServer } from 'next/dist/server/lib/start-server';
+import { setupAutoUpdater, checkForUpdatesAndNotify } from './auto-updater';
+
+import { getStorageFilePath, readStorage } from './persistence';
+import { startRedisServer, initRedis, stopRedisServer } from './db/redis-manager';
+import { logDebug, logError, logInfo } from './logger';
+import { registerAllHandlers } from './ipc-handlers';
+import { updateStorage } from './shared/state';
+import type { StorageData } from './utils/types';
+import { startPostgresServer, stopPostgresServer } from './db/postgres-manager';
+
+logInfo('Application starting...');
+logInfo(`User data path: ${app.getPath('userData')}`);
+
+const isDatabaseOnlyMode = process.argv.includes('--database-only');
+const isHeadlessMode = process.argv.includes('--headless');
+
+if (isDatabaseOnlyMode) {
+  logInfo('🗄️ Database-only mode detected');
+}
+
+const iconName = 'icon.png';
+const icon = is.dev
+  ? join(__dirname, '..', '..', 'resources', iconName)
+  : join(process.resourcesPath, iconName);
+
+let mainWindow: BrowserWindow;
+let inMemoryStorage: StorageData = {};
+const storageFilePath = getStorageFilePath();
+
+const startNextJSServer = async () => {
+  try {
+    logInfo('Starting Next.js server...');
+    const nextJSPort = await getPort({ portRange: [30011, 50000] });
+    logInfo(`Selected port for Next.js server: ${nextJSPort}`);
+    const webDir = join(app.getAppPath(), 'app');
+
+    await startServer({
+      dir: webDir,
+      isDev: false,
+      hostname: 'localhost',
+      port: nextJSPort,
+      customServer: true,
+      allowRetry: false,
+      keepAliveTimeout: 5000,
+      minimalMode: true,
+    });
+
+    logInfo(`Next.js server started successfully on port: ${nextJSPort}`);
+    return nextJSPort;
+  } catch (error) {
+    logError('Error starting Next.js server:');
+    throw error;
+  }
+};
+
+function createWindow(isMac: boolean): void {
+  // Skip window creation in database-only or headless mode
+  if (isDatabaseOnlyMode || isHeadlessMode) {
+    logInfo('Skipping window creation (database-only or headless mode)');
+    return;
+  }
+
+  logInfo('Creating main application window...');
+
+  mainWindow = new BrowserWindow({
+    icon: icon,
+    width: 1920,
+    height: 1080,
+    minWidth: 640,
+    minHeight: 480,
+    show: false,
+    autoHideMenuBar: isMac,
+    frame: !isMac,
+    titleBarStyle: isMac ? 'hidden' : 'default',
+    trafficLightPosition: { x: 10, y: 10 },
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false,
+    },
+  });
+
+  mainWindow.on('ready-to-show', () => {
+    logInfo(`Storage file path: ${storageFilePath}`);
+    mainWindow.show();
+    logInfo('Main window is now visible');
+  });
+
+  mainWindow.webContents.setWindowOpenHandler((details) => {
+    logInfo(`Opening external URL: ${details.url}`);
+    shell.openExternal(details.url);
+    return { action: 'deny' };
+  });
+
+  mainWindow.webContents.session.webRequest.onBeforeSendHeaders(
+    (details, callback) => {
+      const requestHeaders = {
+        ...details.requestHeaders,
+        'x-electron-app': 'true',
+      };
+      callback({ requestHeaders });
+    },
+  );
+
+  const loadURL = async () => {
+    if (is.dev) {
+      logInfo('Development mode detected, loading from localhost:3000');
+      mainWindow.loadURL('http://localhost:3000');
+      // mainWindow.webContents.openDevTools();
+    } else {
+      try {
+        logInfo('Production mode detected, starting built-in Next.js server');
+        const port = await startNextJSServer();
+        logInfo(`Next.js server started on port: ${port}`);
+        mainWindow.loadURL(`http://localhost:${port}`);
+      } catch (error) {
+        logError('Failed to load Next.js app:');
+      }
+    }
+  };
+
+  loadURL();
+}
+
+app.whenReady().then(async () => {
+  logInfo('Application ready event triggered');
+  const isMac = process.platform === 'darwin';
+  logInfo(`Platform detected: ${process.platform}`);
+
+  // Only initialize full app features if not in database-only mode
+  if (!isDatabaseOnlyMode) {
+    electronApp.setAppUserModelId('com.electron');
+    initializeInMemoryStorage();
+    updateStorage(inMemoryStorage);
+    logInfo('In-memory storage initialized');
+
+    // Register IPC handlers
+    registerAllHandlers();
+  }
+
+  // Always start PostgreSQL server
+  await startPostgresServer();
+
+  // Only start Redis and other services if not in database-only mode
+  if (!isDatabaseOnlyMode) {
+    try {
+      startRedisServer();
+      await initRedis();
+    } catch (error) {
+      logError(`Failed to start Redis server: ${error}`);
+    }
+
+    app.on('browser-window-created', (_, window) => {
+      logDebug('New browser window created');
+      optimizer.watchWindowShortcuts(window);
+    });
+
+    // IPC test
+    ipcMain.on('ping', () => logDebug('IPC ping received, responding with pong'));
+
+    // AutoUpdater comes from a library function.
+    logInfo('Setting up auto-updater...');
+    setupAutoUpdater();
+
+    logInfo('Creating main application window...');
+    createWindow(isMac);
+
+    app.on('activate', () => {
+      logInfo('App activated');
+      // On macOS it's common to re-create a window in the app when the
+      // dock icon is clicked and there are no other windows open.
+      if (BrowserWindow.getAllWindows().length === 0) {
+        logInfo('No windows found, creating a new one');
+        createWindow(isMac);
+      }
+    });
+  } else {
+    // Database-only mode: keep the process alive for database operations
+    logInfo('🗄️ Database server is running and ready');
+    console.log('✅ PostgreSQL server started on port 5434');
+    console.log('💡 You can now run database operations (db:push, db:migrate, etc.)');
+    console.log('🛑 Press Ctrl+C to stop the database server');
+
+    // Handle graceful shutdown
+    const gracefulShutdown = async (signal: string) => {
+      logInfo(`Received ${signal}. Shutting down database server...`);
+      await stopPostgresServer();
+      logInfo('Database server stopped. Exiting...');
+      process.exit(0);
+    };
+
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  }
+
+  function initializeInMemoryStorage(): void {
+    logInfo('Initializing in-memory storage...');
+    inMemoryStorage = readStorage(storageFilePath);
+    logInfo('Initial storage loaded');
+    logDebug(`Initial storage: ${inMemoryStorage}`);
+  }
+});
+
+// Quit when all windows are closed, except on macOS. There, it's common
+// for applications and their menu bar to stay active until the user quits
+// explicitly with Cmd + Q.
+app.on('window-all-closed', async () => {
+  logInfo('All windows closed');
+
+  // Always stop servers
+  logInfo('Stopping PostgreSQL server...');
+  await stopPostgresServer();
+
+  if (!isDatabaseOnlyMode) {
+    logInfo('Stopping Redis server...');
+    await stopRedisServer();
+  }
+
+  if (process.platform !== 'darwin') {
+    logInfo('Not on macOS, quitting application');
+    app.quit();
+  } else {
+    logInfo('On macOS, keeping app active in background');
+  }
+});
+
+app.on('before-quit', async () => {
+  logInfo('Application is about to quit');
+  logInfo('Stopping PostgreSQL server...');
+  await stopPostgresServer();
+
+  if (!isDatabaseOnlyMode) {
+    logInfo('Stopping Redis server...');
+    await stopRedisServer();
+  }
+
+  logInfo('Application exiting');
+  app.exit();
+});
+
+// This is to notify the user when the app update is ready.
+app.on('ready', () => {
+  if (!isDatabaseOnlyMode) {
+    logInfo('Checking for updates...');
+    checkForUpdatesAndNotify();
+  }
+});

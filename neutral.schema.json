@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Neutral Stack Project Configuration",
+  "description": "Configuration file for a Neutral Stack project. Provides autocompletion and validation in supported editors.",
+  "type": "object",
+  "properties": {
+    "projectName": {
+      "type": "string",
+      "description": "The name of the project."
+    },
+    "projectDir": {
+      "type": "string",
+      "description": "The absolute directory path of the project."
+    },
+    "relativePath": {
+      "type": "string",
+      "description": "The relative path of the project."
+    },
+    "auth": {
+      "type": "string",
+      "description": "The authentication provider.",
+      "enum": ["clerk", "better-auth", "none"]
+    },
+    "license": {
+      "type": "string",
+      "description": "The license provider.",
+      "enum": ["polar", "lemonsqueezy", "none"]
+    },
+    "usageProvider": {
+      "type": "string",
+      "description": "The usage-based billing provider.",
+      "enum": ["polar", "metronome", "none"]
+    },
+    "packageManager": {
+      "type": "string",
+      "description": "The package manager for the project.",
+      "enum": ["npm", "pnpm", "bun"]
+    },
+    "addons": {
+      "type": "array",
+      "description": "Selected addons for the project.",
+      "items": {
+        "type": "string",
+        "enum": ["licensed-components", "authed-components"]
+      }
+    },
+    "appType": {
+      "type": "string",
+      "description": "The type of application.",
+      "enum": ["vercel-ai-chatbot", "normal"]
+    },
+    "userEmail": {
+      "type": "string",
+      "description": "The email of the user who generated the project.",
+      "format": "email"
+    }
+  },
+  "required": [
+    "projectName",
+    "projectDir",
+    "relativePath",
+    "auth",
+    "license",
+    "usageProvider",
+    "packageManager",
+    "addons",
+    "appType",
+    "userEmail"
+  ]
+}

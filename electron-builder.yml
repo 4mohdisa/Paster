@@ -1,0 +1,87 @@
+# /Users/alexboone/prototype/Github/next-electron/electron-builder.yml
+
+appId: com.neutralbase.nextjs-electron
+productName: NextJS Electron
+
+directories:
+  buildResources: electron-build-assets
+  output: dist
+
+files:
+  # Electron main/preload code (output of tsup into the 'build' directory)
+  - build/**
+  # Next.js application files
+  - from: .next/standalone
+    to: app
+    filter:
+      - '!**/.env'
+      - '!**/package.json'
+  - from: .next/static
+    to: app/.next/static
+  - from: public
+    to: app/public
+  - package.json
+  - 'resources/**'
+  # Exclusions
+  - '!src/**'
+  - '!app/**'
+  - '!.next/**'
+  - '!node_modules/*'
+  - '!**/*.map'
+  - '!*.env'
+  - '!electron-builder.yml'
+  - '!next.config.mjs'
+  - '!postcss.config.cjs' # Or your postcss config filename
+  - '!tailwind.config.ts' # Or your tailwind config filename
+  - '!tsconfig*.json'
+  - '!README.md'
+  - '!electron-build-assets/**' # Exclude the source of buildResources itself from being copied if not needed
+
+asar: true
+asarUnpack:
+  - resources/**
+  - 'node_modules/**'
+  - '**/*.{node,dll}'
+
+afterSign: electron-build-assets/notarize.js
+
+win:
+  executableName: deep-crawler
+  # target: nsis
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+
+mac:
+  entitlements: electron-build-assets/entitlements.mac.plist
+  entitlementsInherit: electron-build-assets/entitlements.mac.plist
+  extendInfo:
+    - NSCameraUsageDescription: Application requests access to the device's camera.
+    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+  gatekeeperAssess: false
+  hardenedRuntime: true # change to true when you want to sign
+  notarize: false
+  identity: ''
+
+dmg:
+  artifactName: ${name}-${version}.${ext}
+  sign: false
+
+linux:
+  target:
+    - AppImage
+    - snap
+    - deb
+  maintainer: neutralbase.com
+  category: Utility
+
+npmRebuild: true
+
+publish:
+  provider: generic
+  url: https://example.com/auto-updates
+  channel: latest
