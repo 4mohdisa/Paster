@@ -1,17 +1,17 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron';
 import { electronApp, is, optimizer } from '@electron-toolkit/utils';
-import { join } from 'node:path';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { getPort } from 'get-port-please';
 import { startServer } from 'next/dist/server/lib/start-server';
-import { setupAutoUpdater, checkForUpdatesAndNotify } from './auto-updater';
+import { join } from 'node:path';
+import { checkForUpdatesAndNotify, setupAutoUpdater } from './auto-updater';
 
-import { getStorageFilePath, readStorage } from './persistence';
-import { startRedisServer, initRedis, stopRedisServer } from './db/redis-manager';
-import { logDebug, logError, logInfo } from './logger';
+import { startPostgresServer, stopPostgresServer } from './db/postgres-manager';
+import { initRedis, startRedisServer, stopRedisServer } from './db/redis-manager';
 import { registerAllHandlers } from './ipc-handlers';
+import { logDebug, logError, logInfo } from './logger';
+import { getStorageFilePath, readStorage } from './persistence';
 import { updateStorage } from './shared/state';
 import type { StorageData } from './utils/types';
-import { startPostgresServer, stopPostgresServer } from './db/postgres-manager';
 
 logInfo('Application starting...');
 logInfo(`User data path: ${app.getPath('userData')}`);
@@ -69,10 +69,8 @@ function createWindow(isMac: boolean): void {
 
   mainWindow = new BrowserWindow({
     icon: icon,
-    width: 1920,
-    height: 1080,
-    minWidth: 640,
-    minHeight: 480,
+    width: 800,
+    height: 600,
     show: false,
     autoHideMenuBar: isMac,
     frame: !isMac,
