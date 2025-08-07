@@ -8,7 +8,11 @@ struct AiPasteHelper: ParsableCommand {
         version: "1.0.0",
         subcommands: [
             FormatCommand.self,
+            PasteCommand.self,
             MonitorCommand.self,
+            PermissionsCommand.self,
+            SettingsCommand.self,
+            ShortcutsCommand.self,
             TestCommand.self
         ]
     )
@@ -20,7 +24,7 @@ struct TestCommand: ParsableCommand {
         commandName: "test",
         abstract: "Test the CLI is working"
     )
-    
+
     func run() throws {
         let response = CLIResponse(
             success: true,
@@ -37,28 +41,28 @@ struct FormatCommand: ParsableCommand {
         commandName: "format",
         abstract: "Format spreadsheet data with pipe delimiters"
     )
-    
+
     @Option(name: .short, help: "Input text to format")
     var input: String?
-    
+
     @Flag(name: .long, help: "Read from stdin")
     var stdin = false
-    
+
     @Flag(name: .long, help: "Input is HTML")
     var html = false
-    
-    @Option(name: .short, help: "Output format: simple, markdown, html, pretty")
+
+    @Option(name: .short, help: "Output format: simple, markdown, pretty-printed, html")
     var outputFormat: String = "simple"
-    
+
     @Flag(name: .long, help: "Disable prefix")
     var noPrefix = false
-    
+
     @Option(name: .short, help: "Custom prefix text")
     var prefix: String?
-    
+
     func run() throws {
         var text = ""
-        
+
         if stdin {
             // Read from stdin
             while let line = readLine() {
@@ -69,7 +73,7 @@ struct FormatCommand: ParsableCommand {
         } else {
             // Check clipboard
             let pasteboard = NSPasteboard.general
-            
+
             if html, let htmlData = pasteboard.data(forType: .html) {
                 text = String(data: htmlData, encoding: .utf8) ?? ""
             } else if let plainString = pasteboard.string(forType: .string) {
@@ -78,20 +82,20 @@ struct FormatCommand: ParsableCommand {
                 throw ValidationError("No input provided. Use --input, --stdin, or copy to clipboard")
             }
         }
-        
+
         let formatter = TableFormatter()
         formatter.usePrefixEnabled = !noPrefix
-        
+
         if let customPrefix = prefix {
             formatter.userDefinedPrefix = customPrefix
         }
-        
+
         let formatted = formatter.createPasteableContent(
             text,
             isHTML: html,
             outputFormat: outputFormat
         )
-        
+
         let response = CLIResponse(
             success: true,
             message: "Formatted successfully",
@@ -101,25 +105,144 @@ struct FormatCommand: ParsableCommand {
     }
 }
 
+// Paste command - complete paste flow (format + update clipboard + trigger paste)
+struct PasteCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "paste",
+        abstract: "Format clipboard content and trigger paste"
+    )
+
+    @Flag(name: .long, help: "Disable prefix")
+    var noPrefix = false
+
+    @Option(name: .short, help: "Custom prefix text")
+    var prefix: String?
+
+    @Option(name: .short, help: "Output format: simple, markdown, pretty-printed, html")
+    var outputFormat: String = "simple"
+
+    @Flag(name: .long, help: "Simulate paste (don't trigger Cmd+V)")
+    var simulate = false
+
+    func run() throws {
+        let pasteboard = NSPasteboard.general
+        let formatter = TableFormatter()
+        let settings = SettingsManager.shared
+        
+        // Use settings if command-line options not provided
+        formatter.usePrefixEnabled = noPrefix ? false : settings.usePrefixEnabled
+        formatter.userDefinedPrefix = prefix ?? settings.userDefinedPrefix
+        // If outputFormat is default "simple", use settings value, otherwise use the provided format
+        let actualOutputFormat = outputFormat == "simple" ? settings.outputFormat : outputFormat
+
+        var formattedContent: String?
+        var originalContent: String?
+
+        // Check for HTML first (Excel/Google Sheets)
+        if let htmlData = pasteboard.data(forType: .html),
+           let htmlString = String(data: htmlData, encoding: .utf8) {
+            originalContent = htmlString
+
+            // Check if it contains table data
+            if htmlString.contains("<table") || htmlString.contains("google-sheets-html-origin") {
+                formattedContent = formatter.createPasteableContent(
+                    htmlString,
+                    isHTML: true,
+                    outputFormat: actualOutputFormat
+                )
+            }
+        }
+
+        // If no HTML table, check for tab-delimited plain text
+        if formattedContent == nil,
+           let plainString = pasteboard.string(forType: .string) {
+            originalContent = plainString
+
+            // Only format if it contains tabs (likely spreadsheet data)
+            if plainString.contains("\t") {
+                formattedContent = formatter.createPasteableContent(
+                    plainString,
+                    isHTML: false,
+                    outputFormat: actualOutputFormat
+                )
+            }
+        }
+
+        // If we have formatted content, update clipboard and trigger paste
+        if let formatted = formattedContent {
+            // Update clipboard with formatted content
+            pasteboard.clearContents()
+            pasteboard.setString(formatted, forType: .string)
+
+            // Trigger system paste unless simulating
+            if !simulate {
+                triggerSystemPaste()
+            }
+
+            let response = CLIResponse(
+                success: true,
+                message: "Paste executed",
+                data: formatted,
+                event: "paste-completed"
+            )
+            print(response.toJSON())
+        } else {
+            // No spreadsheet data found
+            let response = CLIResponse(
+                success: false,
+                message: "No spreadsheet data found in clipboard",
+                error: "No table or tab-delimited data detected"
+            )
+            print(response.toJSON())
+        }
+    }
+
+    // Port of performCustomPaste from AppDelegate.swift
+    private func triggerSystemPaste() {
+        guard let source = CGEventSource(stateID: .hidSystemState) else {
+            print("Failed to create CGEventSource")
+            return
+        }
+
+        // Virtual keycode for 'v' on a US keyboard is 0x09 (9)
+        let vKey: CGKeyCode = 0x09
+
+        // Press 'v' key down with Command modifier
+        if let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true) {
+            keyDown.flags = .maskCommand
+            keyDown.post(tap: .cghidEventTap)
+        }
+
+        // Small delay to ensure key press is registered
+        usleep(10000) // 10ms
+
+        // Release 'v' key with Command modifier
+        if let keyUp = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false) {
+            keyUp.flags = .maskCommand
+            keyUp.post(tap: .cghidEventTap)
+        }
+    }
+}
+
 // Monitor command - watch clipboard for changes
 struct MonitorCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "monitor",
         abstract: "Monitor clipboard for spreadsheet data"
     )
-    
+
     @Option(name: .short, help: "Check interval in seconds")
     var interval: Double = 0.5
-    
+
     @Flag(name: .long, help: "Disable prefix")
     var noPrefix = false
-    
+
     func run() throws {
         let formatter = TableFormatter()
         formatter.usePrefixEnabled = !noPrefix
-        
+
         var lastChangeCount = NSPasteboard.general.changeCount
-        
+
         // Send initial status
         let statusResponse = CLIResponse(
             success: true,
@@ -128,21 +251,21 @@ struct MonitorCommand: ParsableCommand {
         )
         print(statusResponse.toJSON())
         fflush(stdout)
-        
+
         // Monitor loop
         Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
             let currentChangeCount = NSPasteboard.general.changeCount
-            
+
             if currentChangeCount != lastChangeCount {
                 lastChangeCount = currentChangeCount
-                
+
                 let pasteboard = NSPasteboard.general
                 var formattedContent: String?
-                
+
                 // Check for HTML first (Excel/Google Sheets)
                 if let htmlData = pasteboard.data(forType: .html),
                    let htmlString = String(data: htmlData, encoding: .utf8) {
-                    
+
                     // Check if it contains table data
                     if htmlString.contains("<table") || htmlString.contains("google-sheets-html-origin") {
                         formattedContent = formatter.createPasteableContent(
@@ -152,7 +275,7 @@ struct MonitorCommand: ParsableCommand {
                         )
                     }
                 }
-                
+
                 // If no HTML table, check for tab-delimited plain text
                 if formattedContent == nil,
                    let plainString = pasteboard.string(forType: .string),
@@ -163,7 +286,7 @@ struct MonitorCommand: ParsableCommand {
                         outputFormat: "simple"
                     )
                 }
-                
+
                 // If we have formatted content, send it
                 if let formatted = formattedContent {
                     let response = CLIResponse(
@@ -177,7 +300,7 @@ struct MonitorCommand: ParsableCommand {
                 }
             }
         }
-        
+
         // Keep the command running
         RunLoop.main.run()
     }
@@ -190,7 +313,7 @@ struct CLIResponse: Codable {
     let data: String?
     let error: String?
     let event: String?
-    
+
     init(success: Bool, message: String? = nil, data: String? = nil, error: String? = nil, event: String? = nil) {
         self.success = success
         self.message = message
@@ -198,7 +321,7 @@ struct CLIResponse: Codable {
         self.error = error
         self.event = event
     }
-    
+
     func toJSON() -> String {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted

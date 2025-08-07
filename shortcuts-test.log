@@ -1,0 +1,5 @@
+{
+  "message" : "Shortcuts monitoring started",
+  "success" : true,
+  "data" : "{\"modifiers\": 3, \"keyCode\": 9}"
+}

@@ -1,11 +1,12 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(swift build)",
+      "Bash(find:*)"
+    ],
     "additionalDirectories": [
       "/Users/moinulmoin/Developer/clients/neutralbase/aipaste",
       "/Users/moinulmoin/Developer/clients/neutralbase/angry-ants"
-    ],
-    "allow": [
-      "Bash(swift build)"
     ]
   }
 }

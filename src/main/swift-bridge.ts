@@ -35,7 +35,7 @@ export class SwiftBridge {
       const result = await this.execute(['test']);
       return result.success;
     } catch (error) {
-      logError('Swift CLI test failed:', error);
+      logError(`Swift CLI test failed: ${error}`);
       return false;
     }
   }
@@ -51,8 +51,30 @@ export class SwiftBridge {
       }
       throw new Error(result.error || 'Format failed');
     } catch (error) {
-      logError('Table formatting failed:', error);
+      logError(`Table formatting failed: ${error}`);
       throw error;
+    }
+  }
+
+  /**
+   * Execute complete paste flow (format + update clipboard + trigger Cmd+V)
+   */
+  async executePaste(options?: { noPrefix?: boolean; simulate?: boolean }): Promise<boolean> {
+    try {
+      const args = ['paste'];
+      if (options?.noPrefix) args.push('--no-prefix');
+      if (options?.simulate) args.push('--simulate');
+      
+      const result = await this.execute(args);
+      if (result.success) {
+        logInfo('Paste executed successfully');
+        return true;
+      }
+      logError(`Paste failed: ${result.error}`);
+      return false;
+    } catch (error) {
+      logError(`Paste execution failed: ${error}`);
+      return false;
     }
   }
 

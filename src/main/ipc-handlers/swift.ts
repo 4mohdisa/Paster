@@ -11,7 +11,7 @@ export function registerSwiftHandlers(): void {
       const result = await swiftBridge.test();
       return { success: result };
     } catch (error: any) {
-      logError('Swift test error:', error);
+      logError(`Swift test error: ${error}`);
       return { success: false, error: error.message };
     }
   });
@@ -25,7 +25,18 @@ export function registerSwiftHandlers(): void {
       );
       return { success: true, data: formatted };
     } catch (error: any) {
-      logError('Format table error:', error);
+      logError(`Format table error: ${error}`);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Execute paste flow
+  ipcMain.handle('swift:execute-paste', async (_, options?: { noPrefix?: boolean; simulate?: boolean }) => {
+    try {
+      const success = await swiftBridge.executePaste(options);
+      return { success };
+    } catch (error: any) {
+      logError(`Execute paste error: ${error}`);
       return { success: false, error: error.message };
     }
   });
@@ -39,7 +50,7 @@ export function registerSwiftHandlers(): void {
       });
       return { success: true };
     } catch (error: any) {
-      logError('Start monitor error:', error);
+      logError(`Start monitor error: ${error}`);
       return { success: false, error: error.message };
     }
   });
@@ -50,7 +61,7 @@ export function registerSwiftHandlers(): void {
       swiftBridge.stopClipboardMonitor();
       return { success: true };
     } catch (error: any) {
-      logError('Stop monitor error:', error);
+      logError(`Stop monitor error: ${error}`);
       return { success: false, error: error.message };
     }
   });
