@@ -1,0 +1,48 @@
+{
+  "project": "AiPaste Electron",
+  "description": "Electron app with Swift CLI for clipboard management and OCR",
+  "hooks": {
+    "pre-task": ".claude/hooks/pre-task.md",
+    "post-task": ".claude/hooks/post-task.md"
+  },
+  "context": {
+    "always_read": [
+      "agent-docs/MASTER_PROGRESS_REPORT.md",
+      "agent-docs/WORK_HOOKS_PROTOCOL.md"
+    ],
+    "phase_specific": {
+      "phase_2": [
+        "/Users/moinulmoin/Developer/clients/neutralbase/angry-ants/Packages/AiPasteCore/Sources/AiPasteCore/AiPasteCore.swift",
+        "/Users/moinulmoin/Developer/clients/neutralbase/aipaste/AiPaste/Events/EventTap.swift"
+      ],
+      "phase_3": [
+        "src/app/(protected)/settings/page.tsx",
+        "src/components/ui/"
+      ]
+    }
+  },
+  "rules": [
+    "Always check MASTER_PROGRESS_REPORT.md before starting work",
+    "Create implementation reports for significant changes",
+    "Test Swift CLI after any modifications",
+    "Update progress percentages after completing components",
+    "Follow original Swift code patterns exactly"
+  ],
+  "testing": {
+    "swift_cli": [
+      "./.build/debug/AiPasteHelper test",
+      "echo -e 'A\\tB\\nC\\tD' | ./.build/debug/AiPasteHelper format --stdin"
+    ],
+    "typescript": [
+      "npm run build",
+      "npm run typecheck"
+    ]
+  },
+  "current_state": {
+    "phase": 2,
+    "phase_name": "Core Features",
+    "completion": 35,
+    "next_task": "OCR Implementation",
+    "blockers": []
+  }
+}

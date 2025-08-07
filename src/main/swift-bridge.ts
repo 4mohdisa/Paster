@@ -1,0 +1,149 @@
+import { spawn, execFile, ChildProcess } from 'child_process';
+import { promisify } from 'util';
+import path from 'path';
+import { app } from 'electron';
+import { logInfo, logError } from './logger';
+
+const execFileAsync = promisify(execFile);
+
+interface CLIResponse {
+  success: boolean;
+  message?: string;
+  data?: string;
+  error?: string;
+}
+
+export class SwiftBridge {
+  private binaryPath: string;
+  private monitorProcess: ChildProcess | null = null;
+
+  constructor() {
+    // Determine binary path based on environment
+    const isDev = !app.isPackaged;
+    this.binaryPath = isDev
+      ? path.join(app.getAppPath(), 'swift-cli', '.build', 'debug', 'AiPasteHelper')
+      : path.join(process.resourcesPath, 'bin', 'AiPasteHelper');
+    
+    logInfo(`Swift binary path: ${this.binaryPath}`);
+  }
+
+  /**
+   * Test if the Swift CLI is working
+   */
+  async test(): Promise<boolean> {
+    try {
+      const result = await this.execute(['test']);
+      return result.success;
+    } catch (error) {
+      logError('Swift CLI test failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Format table data with pipe delimiters
+   */
+  async formatTable(input: string, format: 'simple' | 'markdown' | 'html' = 'simple'): Promise<string> {
+    try {
+      const result = await this.execute(['format', '--input', input, '-f', format]);
+      if (result.success && result.data) {
+        return result.data;
+      }
+      throw new Error(result.error || 'Format failed');
+    } catch (error) {
+      logError('Table formatting failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Start clipboard monitoring (long-running process)
+   */
+  startClipboardMonitor(callback: (data: string) => void): void {
+    if (this.monitorProcess) {
+      this.stopClipboardMonitor();
+    }
+
+    logInfo('Starting clipboard monitor...');
+    this.monitorProcess = spawn(this.binaryPath, ['monitor']);
+
+    this.monitorProcess.stdout?.on('data', (data: Buffer) => {
+      try {
+        const response: CLIResponse = JSON.parse(data.toString());
+        if (response.success && response.data) {
+          callback(response.data);
+        }
+      } catch (error) {
+        // Handle non-JSON output (like status messages)
+        const output = data.toString().trim();
+        if (output) {
+          logInfo(`Monitor output: ${output}`);
+        }
+      }
+    });
+
+    this.monitorProcess.stderr?.on('data', (data: Buffer) => {
+      logError(`Monitor error: ${data.toString()}`);
+    });
+
+    this.monitorProcess.on('close', (code) => {
+      logInfo(`Monitor process exited with code ${code}`);
+      this.monitorProcess = null;
+    });
+  }
+
+  /**
+   * Stop clipboard monitoring
+   */
+  stopClipboardMonitor(): void {
+    if (this.monitorProcess) {
+      logInfo('Stopping clipboard monitor...');
+      this.monitorProcess.kill();
+      this.monitorProcess = null;
+    }
+  }
+
+  /**
+   * Execute a one-shot command
+   */
+  private async execute(args: string[]): Promise<CLIResponse> {
+    try {
+      const { stdout, stderr } = await execFileAsync(this.binaryPath, args);
+      
+      if (stderr) {
+        logError(`Swift CLI stderr: ${stderr}`);
+      }
+
+      // Parse JSON response
+      const response: CLIResponse = JSON.parse(stdout);
+      return response;
+    } catch (error: any) {
+      // Handle execution errors
+      if (error.code === 'ENOENT') {
+        throw new Error(`Swift CLI not found at ${this.binaryPath}`);
+      }
+      
+      // Try to parse error output as JSON
+      if (error.stdout) {
+        try {
+          const response: CLIResponse = JSON.parse(error.stdout);
+          return response;
+        } catch {
+          // Not JSON, return as error
+        }
+      }
+      
+      throw new Error(`Swift CLI error: ${error.message}`);
+    }
+  }
+
+  /**
+   * Clean up resources
+   */
+  dispose(): void {
+    this.stopClipboardMonitor();
+  }
+}
+
+// Singleton instance
+export const swiftBridge = new SwiftBridge();

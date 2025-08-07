@@ -1,0 +1,57 @@
+import { ipcMain } from 'electron';
+import { swiftBridge } from '../swift-bridge';
+import { logInfo, logError } from '../logger';
+
+export function registerSwiftHandlers(): void {
+  logInfo('Registering Swift bridge IPC handlers');
+
+  // Test Swift CLI
+  ipcMain.handle('swift:test', async () => {
+    try {
+      const result = await swiftBridge.test();
+      return { success: result };
+    } catch (error: any) {
+      logError('Swift test error:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Format table data
+  ipcMain.handle('swift:format-table', async (_, input: string, format?: string) => {
+    try {
+      const formatted = await swiftBridge.formatTable(
+        input,
+        (format as 'simple' | 'markdown' | 'html') || 'simple'
+      );
+      return { success: true, data: formatted };
+    } catch (error: any) {
+      logError('Format table error:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Start clipboard monitoring
+  ipcMain.handle('swift:start-monitor', async () => {
+    try {
+      swiftBridge.startClipboardMonitor((data) => {
+        // We'll implement this when we add the monitor command
+        logInfo('Clipboard data formatted:', data);
+      });
+      return { success: true };
+    } catch (error: any) {
+      logError('Start monitor error:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Stop clipboard monitoring
+  ipcMain.handle('swift:stop-monitor', async () => {
+    try {
+      swiftBridge.stopClipboardMonitor();
+      return { success: true };
+    } catch (error: any) {
+      logError('Stop monitor error:', error);
+      return { success: false, error: error.message };
+    }
+  });
+}

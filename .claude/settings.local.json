@@ -3,6 +3,9 @@
     "additionalDirectories": [
       "/Users/moinulmoin/Developer/clients/neutralbase/aipaste",
       "/Users/moinulmoin/Developer/clients/neutralbase/angry-ants"
+    ],
+    "allow": [
+      "Bash(swift build)"
     ]
   }
 }
