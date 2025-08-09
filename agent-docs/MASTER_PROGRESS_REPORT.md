@@ -98,6 +98,28 @@ gantt
 
 ## Implementation Reports
 
+### Process Manager Implementation
+**Date**: Current Session  
+**Files Created/Modified**: 
+- `src/main/process-manager.ts`
+- `src/main/ipc-handlers/process-manager.ts`
+
+**Key Features**:
+- ✅ Robust daemon management with health monitoring
+- ✅ Auto-restart with exponential backoff (max 5 retries)
+- ✅ Heartbeat monitoring every 30 seconds
+- ✅ Graceful shutdown on app quit
+- ✅ IPC handlers for status/restart/stop controls
+- ✅ Crash detection and recovery
+- ✅ **ELECTRON-BASED PERMISSION MANAGEMENT** (Refactored!)
+
+**Technical Details**:
+- Uses `systemPreferences.isTrustedAccessibilityClient()` for permission checks
+- Electron handles ALL permission UI/requests/checks
+- Swift CLI ONLY does keyboard monitoring (no permission logic)
+- Clean separation of concerns: Electron = permissions, Swift = monitoring
+- Automatic permission request on startup if needed
+
 ### Table Formatter Implementation
 **Date**: Session 1  
 **Files Modified**: 
@@ -175,12 +197,12 @@ Electron (TypeScript) → spawn() → Swift CLI → JSON → Electron
 6. [x] **Test suite** - 26 automated tests all passing
 7. [x] **Bug fix** - Format settings now properly applied
 
-### 🎯 Priority 2: Make It Usable (NEXT!)
+### 🎯 Priority 2: Make It Usable (IN PROGRESS!)
 1. [x] **Test CLI end-to-end** - Verified shortcuts → paste flow works
-2. [ ] **Add history command** - Track paste statistics  
+2. [x] **Process manager** - Robust daemon management with auto-restart
 3. [ ] **Create onboarding UI** - Permissions request flow
-4. [ ] **Build dashboard UI** - History display + settings
-5. [ ] **Process manager** - Keep shortcuts daemon running
+4. [ ] **Build settings UI** - Settings window in Electron
+5. [ ] **Add history command** - Track paste statistics
 
 ### Priority 3: Future Enhancements (Can Wait)
 1. [ ] OCR from TRex

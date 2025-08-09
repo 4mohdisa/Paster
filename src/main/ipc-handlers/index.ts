@@ -3,6 +3,7 @@
 import { logInfo } from "../logger";
 import { registerLicenseHandlers } from "./license";
 import { registerSwiftHandlers } from "./swift";
+import { registerProcessManagerHandlers } from "./process-manager";
 
 /**
  * Register all IPC handlers throughout the application
@@ -16,6 +17,9 @@ export function registerAllHandlers(): void {
 	
 	// Register Swift bridge handlers
 	registerSwiftHandlers();
+	
+	// Register process manager handlers
+	registerProcessManagerHandlers();
 
 	logInfo("All IPC handlers registered successfully");
 }

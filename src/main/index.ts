@@ -12,6 +12,7 @@ import { logDebug, logError, logInfo } from './logger';
 import { getStorageFilePath, readStorage } from './persistence';
 import { updateStorage } from './shared/state';
 import type { StorageData } from './utils/types';
+import { processManager } from './process-manager';
 
 logInfo('Application starting...');
 logInfo(`User data path: ${app.getPath('userData')}`);
@@ -138,6 +139,21 @@ app.whenReady().then(async () => {
 
     // Register IPC handlers
     registerAllHandlers();
+    
+    // Start the shortcuts daemon for global keyboard monitoring
+    logInfo('Starting shortcuts daemon for keyboard monitoring...');
+    
+    // Add a small delay to ensure window is ready for permission dialogs
+    setTimeout(() => {
+      processManager.startShortcutsDaemon().then(success => {
+        if (success) {
+          logInfo('Shortcuts daemon started successfully');
+        } else {
+          logInfo('Shortcuts daemon not started - permission may be required');
+          // The UI will be notified via the 'permission-required' event
+        }
+      });
+    }, 2000); // 2 second delay for window to be ready
   }
 
   // Always start PostgreSQL server

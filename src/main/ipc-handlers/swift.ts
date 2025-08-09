@@ -46,7 +46,7 @@ export function registerSwiftHandlers(): void {
     try {
       swiftBridge.startClipboardMonitor((data) => {
         // We'll implement this when we add the monitor command
-        logInfo('Clipboard data formatted:', data);
+        logInfo(`Clipboard data formatted: ${data}`);
       });
       return { success: true };
     } catch (error: any) {

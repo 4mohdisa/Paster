@@ -7,11 +7,11 @@ import Carbon.HIToolbox.Events
 // EventTap handler class (needs to be a class for Unmanaged)
 class ShortcutHandler {
     let debug: Bool
-    
+
     init(debug: Bool = false) {
         self.debug = debug
     }
-    
+
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         // Handle different event types
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
@@ -19,26 +19,26 @@ class ShortcutHandler {
             // We need to re-enable it when this happens
             return Unmanaged.passRetained(event)
         }
-        
+
         guard type == .keyDown else {
             return Unmanaged.passRetained(event)
         }
-        
+
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
         let flags = event.flags
-        
+
         // Calculate current modifiers
         let commandPressed = flags.contains(.maskCommand)
         let shiftPressed = flags.contains(.maskShift)
         let optionPressed = flags.contains(.maskAlternate)
         let controlPressed = flags.contains(.maskControl)
-        
-        let currentModifiers = 
-            (commandPressed ? 1 : 0) | 
-            (shiftPressed ? 2 : 0) | 
-            (optionPressed ? 4 : 0) | 
+
+        let currentModifiers =
+            (commandPressed ? 1 : 0) |
+            (shiftPressed ? 2 : 0) |
+            (optionPressed ? 4 : 0) |
             (controlPressed ? 8 : 0)
-        
+
         if debug {
             let debugInfo: [String: Any] = [
                 "keyCode": keyCode,
@@ -48,7 +48,7 @@ class ShortcutHandler {
                 "option": optionPressed,
                 "control": controlPressed
             ]
-            
+
             if let jsonData = try? JSONSerialization.data(withJSONObject: debugInfo),
                let jsonString = String(data: jsonData, encoding: .utf8) {
                 let response = CLIResponse(
@@ -61,7 +61,7 @@ class ShortcutHandler {
                 fflush(stdout)
             }
         }
-        
+
         // Check if it's our target shortcut
         let settings = SettingsManager.shared
         if keyCode == CGKeyCode(settings.shortcutKeyCode) && currentModifiers == settings.shortcutModifiers {
@@ -69,28 +69,28 @@ class ShortcutHandler {
             DispatchQueue.global(qos: .userInitiated).async {
                 self.executePasteCommand()
             }
-            
+
             // Block the original event
             return nil
         }
-        
+
         // Pass through other events
         return Unmanaged.passRetained(event)
     }
-    
+
     private func executePasteCommand() {
         // Create a Process to run the paste command
         let process = Process()
         process.executableURL = URL(fileURLWithPath: CommandLine.arguments[0])
         process.arguments = ["paste"]
-        
+
         let pipe = Pipe()
         process.standardOutput = pipe
-        
+
         do {
             try process.run()
             process.waitUntilExit()
-            
+
             // Read the output
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             if let output = String(data: data, encoding: .utf8) {
@@ -98,7 +98,7 @@ class ShortcutHandler {
                 if let jsonData = output.data(using: .utf8),
                    let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
                    let success = json["success"] as? Bool {
-                    
+
                     // Send event notification
                     let response = CLIResponse(
                         success: success,
@@ -129,27 +129,18 @@ struct ShortcutsCommand: ParsableCommand {
         commandName: "shortcuts",
         abstract: "Monitor global keyboard shortcuts for paste formatting"
     )
-    
+
     @Flag(name: .shortAndLong, help: "Debug mode - print all keypress events")
     var debug = false
-    
+
     func run() throws {
-        // Check accessibility permission first
-        guard AXIsProcessTrusted() else {
-            let response = CLIResponse(
-                success: false,
-                message: "Accessibility permission required",
-                error: "Please grant accessibility permission in System Preferences > Privacy & Security > Accessibility"
-            )
-            print(response.toJSON())
-            return
-        }
-        
+        // NO PERMISSION CHECK - Electron handles this before starting this process
+
         // Load settings for shortcut configuration
         let settings = SettingsManager.shared
         let targetModifiers = settings.shortcutModifiers
         let targetKeyCode = settings.shortcutKeyCode
-        
+
         // Send initial status
         let statusResponse = CLIResponse(
             success: true,
@@ -158,21 +149,21 @@ struct ShortcutsCommand: ParsableCommand {
         )
         print(statusResponse.toJSON())
         fflush(stdout)
-        
+
         // Create handler instance
         let handler = ShortcutHandler(debug: debug)
-        
+
         // Setup EventTap
         let eventMask = CGEventMask(1 << CGEventType.keyDown.rawValue)
-        
+
         // Create EventTap callback
         let callback: CGEventTapCallBack = { proxy, type, event, refcon in
             guard let refcon = refcon else { return Unmanaged.passRetained(event) }
-            
+
             let handler = Unmanaged<ShortcutHandler>.fromOpaque(refcon).takeUnretainedValue()
             return handler.handleEvent(proxy: proxy, type: type, event: event)
         }
-        
+
         // Create the event tap
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -190,12 +181,12 @@ struct ShortcutsCommand: ParsableCommand {
             print(response.toJSON())
             return
         }
-        
+
         // Add to run loop
         let runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
-        
+
         // Run the event loop
         CFRunLoopRun()
     }
