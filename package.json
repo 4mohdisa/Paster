@@ -17,8 +17,10 @@
     "electron:dist": "electron-builder --dir",
     "electron:dist:deb": "electron-builder --linux deb",
     "electron:build": "tsup",
-    "build": "run-s next:build electron:build",
-    "dist": "run-s build electron:dist",
+    "swift:build": "cd swift-cli && swift build -c release",
+    "build": "run-s swift:build next:build electron:build",
+    "dist": "run-s swift:build build electron:dist",
+    "dist:prod": "run-s swift:build build 'electron:dist -- --config electron-builder-prod.yml'",
     "dev": "npm-run-all --parallel electron:dev next:dev",
     "electron:build_watch": "tsup --watch",
     "electron:dev": "npm-run-all --parallel electron:build_watch electron:watch",
@@ -157,11 +159,19 @@
   },
   "build": {
     "asar": true,
-    "executableName": "NextJSElectron",
-    "appId": "com.aman.nextjs-electron",
+    "productName": "AiPaste Dev",
+    "executableName": "AiPaste",
+    "appId": "com.neutralbase.aipaste.dev",
     "directories": {
       "buildResources": "electron-build-assets"
     },
+    "extraResources": [
+      {
+        "from": "swift-cli/.build/release",
+        "to": "bin",
+        "filter": ["AiPasteHelper"]
+      }
+    ],
     "asarUnpack": [
       "node_modules/next",
       "node_modules/@img",
@@ -199,6 +209,19 @@
         "deb"
       ],
       "category": "Development"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ]
     }
   }
 }

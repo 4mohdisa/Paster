@@ -10,9 +10,50 @@ import { initRedis, startRedisServer, stopRedisServer } from './db/redis-manager
 import { registerAllHandlers } from './ipc-handlers';
 import { logDebug, logError, logInfo } from './logger';
 import { getStorageFilePath, readStorage } from './persistence';
+import { processManager } from './process-manager';
 import { updateStorage } from './shared/state';
 import type { StorageData } from './utils/types';
-import { processManager } from './process-manager';
+
+// Prevent multiple instances
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  logInfo('Another instance is already running, exiting...');
+  app.quit();
+  process.exit(0);
+}
+
+// Only continue if we got the lock
+app.on('second-instance', (event, commandLine, workingDirectory) => {
+  // Someone tried to run a second instance, we should focus our window instead.
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    if (!mainWindow.isVisible()) mainWindow.show();
+    mainWindow.focus();
+
+  }
+});
+
+// Add cleanup handlers for development
+if (is.dev) {
+  const cleanup = () => {
+    logInfo('Development cleanup: releasing single instance lock');
+    app.releaseSingleInstanceLock();
+    // Stop all processes
+    processManager.stopAllProcesses().then(() => {
+      process.exit(0);
+    }).catch(() => {
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+  process.on('SIGUSR2', cleanup); // nodemon uses this
+  process.on('exit', () => {
+    app.releaseSingleInstanceLock();
+  });
+}
 
 logInfo('Application starting...');
 logInfo(`User data path: ${app.getPath('userData')}`);
@@ -139,10 +180,29 @@ app.whenReady().then(async () => {
 
     // Register IPC handlers
     registerAllHandlers();
-    
+
     // Start the shortcuts daemon for global keyboard monitoring
     logInfo('Starting shortcuts daemon for keyboard monitoring...');
-    
+
+    // Set up event forwarding from process manager to UI
+    processManager.on('permission-required', (data) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('permission-required', data);
+      }
+    });
+
+    processManager.on('permission-granted', (data) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('permission-granted', data);
+      }
+    });
+
+    processManager.on('shortcut-triggered', (data) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('shortcut-triggered', data);
+      }
+    });
+
     // Add a small delay to ensure window is ready for permission dialogs
     setTimeout(() => {
       processManager.startShortcutsDaemon().then(success => {

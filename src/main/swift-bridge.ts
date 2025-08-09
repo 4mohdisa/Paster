@@ -1,8 +1,8 @@
-import { spawn, execFile, ChildProcess } from 'child_process';
-import { promisify } from 'util';
-import path from 'path';
+import { ChildProcess, execFile, spawn } from 'child_process';
 import { app } from 'electron';
-import { logInfo, logError } from './logger';
+import path from 'path';
+import { promisify } from 'util';
+import { logError, logInfo } from './logger';
 
 const execFileAsync = promisify(execFile);
 
@@ -23,7 +23,7 @@ export class SwiftBridge {
     this.binaryPath = isDev
       ? path.join(app.getAppPath(), 'swift-cli', '.build', 'debug', 'AiPasteHelper')
       : path.join(process.resourcesPath, 'bin', 'AiPasteHelper');
-    
+
     logInfo(`Swift binary path: ${this.binaryPath}`);
   }
 
@@ -45,7 +45,7 @@ export class SwiftBridge {
    */
   async formatTable(input: string, format: 'simple' | 'markdown' | 'html' = 'simple'): Promise<string> {
     try {
-      const result = await this.execute(['format', '--input', input, '-f', format]);
+      const result = await this.execute(['format', '--input', input, '-o', format]);
       if (result.success && result.data) {
         return result.data;
       }
@@ -64,7 +64,7 @@ export class SwiftBridge {
       const args = ['paste'];
       if (options?.noPrefix) args.push('--no-prefix');
       if (options?.simulate) args.push('--simulate');
-      
+
       const result = await this.execute(args);
       if (result.success) {
         logInfo('Paste executed successfully');
@@ -126,12 +126,41 @@ export class SwiftBridge {
   }
 
   /**
+   * Get current settings
+   */
+  async getSettings(): Promise<any> {
+    try {
+      const result = await this.execute(['settings', 'get']);
+      if (result.success && result.data) {
+        return JSON.parse(result.data);
+      }
+      throw new Error(result.error || 'Failed to get settings');
+    } catch (error) {
+      logError(`Failed to get settings: ${error}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Update settings using bulk update command
+   */
+  async updateSettings(settings: any): Promise<boolean> {
+    try {
+      const result = await this.execute(['settings', 'update', '--json', JSON.stringify(settings)]);
+      return result.success;
+    } catch (error) {
+      logError(`Failed to update settings: ${error}`);
+      return false;
+    }
+  }
+
+  /**
    * Execute a one-shot command
    */
   private async execute(args: string[]): Promise<CLIResponse> {
     try {
       const { stdout, stderr } = await execFileAsync(this.binaryPath, args);
-      
+
       if (stderr) {
         logError(`Swift CLI stderr: ${stderr}`);
       }
@@ -144,7 +173,7 @@ export class SwiftBridge {
       if (error.code === 'ENOENT') {
         throw new Error(`Swift CLI not found at ${this.binaryPath}`);
       }
-      
+
       // Try to parse error output as JSON
       if (error.stdout) {
         try {
@@ -154,7 +183,7 @@ export class SwiftBridge {
           // Not JSON, return as error
         }
       }
-      
+
       throw new Error(`Swift CLI error: ${error.message}`);
     }
   }

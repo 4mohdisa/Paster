@@ -9,10 +9,10 @@ struct SettingsCommand: ParsableCommand {
     )
     
     enum Action: String, CaseIterable, ExpressibleByArgument {
-        case get, set, list, reset
+        case get, set, list, reset, update
     }
     
-    @Argument(help: "Action to perform (get, set, list, reset)")
+    @Argument(help: "Action to perform (get, set, list, reset, update)")
     var action: Action
     
     @Option(name: .shortAndLong, help: "Setting key")
@@ -20,6 +20,9 @@ struct SettingsCommand: ParsableCommand {
     
     @Option(name: .shortAndLong, help: "Setting value")
     var value: String?
+    
+    @Option(name: .long, help: "JSON string for bulk update")
+    var json: String?
     
     func run() throws {
         let settingsManager = SettingsManager.shared
@@ -89,6 +92,40 @@ struct SettingsCommand: ParsableCommand {
             let response = CLIResponse(
                 success: true,
                 message: "Settings reset to defaults"
+            )
+            print(response.toJSON())
+            
+        case .update:
+            // Bulk update with JSON
+            guard let json = json else {
+                let response = CLIResponse(
+                    success: false,
+                    message: "JSON data required for update"
+                )
+                print(response.toJSON())
+                return
+            }
+            
+            guard let data = json.data(using: .utf8),
+                  let newSettings = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                let response = CLIResponse(
+                    success: false,
+                    message: "Invalid JSON format"
+                )
+                print(response.toJSON())
+                return
+            }
+            
+            // Update all settings at once
+            for (key, value) in newSettings {
+                // Convert value to string for the set method
+                let stringValue = String(describing: value)
+                settingsManager.set(key: key, value: stringValue)
+            }
+            
+            let response = CLIResponse(
+                success: true,
+                message: "Settings updated successfully"
             )
             print(response.toJSON())
         }

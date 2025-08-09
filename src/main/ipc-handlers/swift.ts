@@ -65,4 +65,26 @@ export function registerSwiftHandlers(): void {
       return { success: false, error: error.message };
     }
   });
+
+  // Get settings
+  ipcMain.handle('swift:get-settings', async () => {
+    try {
+      const settings = await swiftBridge.getSettings();
+      return { success: true, data: settings };
+    } catch (error: any) {
+      logError(`Get settings error: ${error}`);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Update settings
+  ipcMain.handle('swift:update-settings', async (_, settings) => {
+    try {
+      const success = await swiftBridge.updateSettings(settings);
+      return { success };
+    } catch (error: any) {
+      logError(`Update settings error: ${error}`);
+      return { success: false, error: error.message };
+    }
+  });
 }

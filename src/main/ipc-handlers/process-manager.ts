@@ -15,6 +15,27 @@ export function registerProcessManagerHandlers(): void {
     });
   });
 
+  // Check overall system status
+  ipcMain.handle('process:check-status', async () => {
+    try {
+      const permissions = processManager.checkPermissions();
+      const daemonRunning = processManager.isShortcutsDaemonRunning();
+      
+      return {
+        accessibility: permissions.accessibility,
+        shortcutsDaemon: daemonRunning,
+        version: '1.0.0'
+      };
+    } catch (error: any) {
+      logError(`Failed to check system status: ${error.message}`);
+      return {
+        accessibility: false,
+        shortcutsDaemon: false,
+        version: '1.0.0'
+      };
+    }
+  });
+
   // Check system permissions
   ipcMain.handle('process:check-permissions', async () => {
     try {

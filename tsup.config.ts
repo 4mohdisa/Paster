@@ -9,6 +9,7 @@ export default defineConfig({
 	skipNodeModulesBundle: true,
 	treeshake: true,
 	outDir: "build",
+	target: "node22",
 	// external: ['electron'],
 	format: ["cjs"],
 	bundle: true,

@@ -155,7 +155,7 @@ export class ProcessManager extends EventEmitter {
       logInfo(`ProcessManager: Spawning ${processName}...`);
       
       const childProcess = spawn(config.command, config.args, {
-        detached: false, // Keep attached so we can monitor it
+        detached: false, // Keep attached for automatic cleanup
         stdio: ['ignore', 'pipe', 'pipe']
       });
 
@@ -249,7 +249,12 @@ export class ProcessManager extends EventEmitter {
     
     if (response.event === 'shortcut-triggered') {
       logInfo(`Shortcut triggered: ${response.message}`);
-      // Could emit an event here for UI feedback
+      // Emit event for UI to show paste history
+      this.emit('shortcut-triggered', {
+        message: response.message,
+        data: response.data,
+        timestamp: new Date().toISOString()
+      });
     } else if (response.event === 'key-debug') {
       logDebug(`Key event: ${response.data}`);
     } else if (!response.success) {
@@ -346,15 +351,16 @@ export class ProcessManager extends EventEmitter {
 
     if (config.process) {
       try {
+        // Simple kill - Node.js handles child cleanup automatically
         config.process.kill('SIGTERM');
         
-        // Force kill after 5 seconds if still running
+        // Force kill after 2 seconds if still running
         setTimeout(() => {
-          if (config.process) {
+          if (config.process && !config.process.killed) {
             logInfo(`ProcessManager: Force killing ${processName}`);
             config.process.kill('SIGKILL');
           }
-        }, 5000);
+        }, 2000);
       } catch (error: any) {
         logError(`ProcessManager: Error stopping ${processName}: ${error.message}`);
       }
@@ -401,6 +407,18 @@ export class ProcessManager extends EventEmitter {
     }
     
     return false;
+  }
+
+  /**
+   * Stop all managed processes
+   */
+  async stopAllProcesses(): Promise<void> {
+    logInfo('ProcessManager: Stopping all processes...');
+    for (const [name] of this.processes) {
+      this.stopProcess(name);
+    }
+    // Wait a bit for processes to stop
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
 
   /**
