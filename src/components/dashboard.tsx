@@ -10,6 +10,15 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Sidebar,
   SidebarContent,
@@ -58,7 +67,7 @@ export default function Dashboard() {
       shortcut: 'Cmd+Shift+V'
     }
   });
-  const [activeSection, setActiveSection] = useState('overview');
+  const [activeSection, setActiveSection] = useState('general');
   const [pasteHistory, setPasteHistory] = useState<PasteHistoryItem[]>([]);
 
   useEffect(() => {
@@ -179,7 +188,7 @@ export default function Dashboard() {
   const allSystemsGo = status.permissionGranted && status.daemonRunning;
 
   const sidebarItems = [
-    { id: 'overview', label: 'Overview', icon: Home },
+    { id: 'general', label: 'General', icon: Home },
     { id: 'status', label: 'System Status', icon: Activity },
     { id: 'history', label: 'Paste History', icon: FileText },
     { id: 'help', label: 'Help & Guide', icon: HelpCircle }
@@ -187,7 +196,7 @@ export default function Dashboard() {
 
   const renderContent = () => {
     switch (activeSection) {
-      case 'overview':
+      case 'general':
         return (
           <div className="space-y-6">
             {/* System Status Alert */}
@@ -211,28 +220,102 @@ export default function Dashboard() {
               </Alert>
             )}
 
-            {/* Current Settings Card */}
+            {/* Table Formatting Settings */}
             <Card>
               <CardHeader>
-                <CardTitle>Current Settings</CardTitle>
-                <CardDescription>Your active configuration</CardDescription>
+                <CardTitle>Table Formatting</CardTitle>
+                <CardDescription>Configure how tables are formatted when pasting</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-4">
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm font-medium">Output Format</span>
-                  <Badge variant="outline">
-                    {getFormatDescription(status.settings.outputFormat)}
-                  </Badge>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Output Format</Label>
+                  <Select
+                    value={status.settings.outputFormat}
+                    onValueChange={async (value) => {
+                      const newSettings = { 
+                        outputFormat: value,
+                        usePrefixEnabled: status.settings.usePrefixEnabled
+                      };
+                      const result = await window.electron.ipcRenderer.invoke('swift:update-settings', newSettings);
+                      if (result.success) {
+                        toast.success('Settings updated');
+                        await checkSystemStatus();
+                        // Restart daemon to apply changes
+                        await window.electron.ipcRenderer.invoke('process:restart-shortcuts');
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select format" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="simple">Simple (Pipe-separated)</SelectItem>
+                      <SelectItem value="markdown">Markdown Table</SelectItem>
+                      <SelectItem value="pretty-printed">Pretty-printed Table</SelectItem>
+                      <SelectItem value="html">HTML Table</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm font-medium">Prefix Text</span>
-                  <Badge variant="outline">
-                    {status.settings.usePrefixEnabled ? 'Enabled' : 'Disabled'}
-                  </Badge>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Use Prefix Text</p>
+                      <p className="text-xs text-muted-foreground">Add explanatory text before tables</p>
+                    </div>
+                    <Button
+                      variant={status.settings.usePrefixEnabled ? "secondary" : "outline"}
+                      size="sm"
+                      onClick={async () => {
+                        const newSettings = { 
+                          outputFormat: status.settings.outputFormat,
+                          usePrefixEnabled: !status.settings.usePrefixEnabled 
+                        };
+                        const result = await window.electron.ipcRenderer.invoke('swift:update-settings', newSettings);
+                        if (result.success) {
+                          toast.success('Settings updated');
+                          await checkSystemStatus();
+                          await window.electron.ipcRenderer.invoke('process:restart-shortcuts');
+                        }
+                      }}
+                    >
+                      {status.settings.usePrefixEnabled ? 'Enabled' : 'Disabled'}
+                    </Button>
+                  </div>
+                  
+                  {status.settings.usePrefixEnabled && (
+                    <div className="space-y-2">
+                      <Label>Prefix Text</Label>
+                      <Textarea
+                        className="min-h-[60px] resize-none"
+                        defaultValue={'Below is a table. The symbol "|" denotes a separation in a column: '}
+                        placeholder="Enter prefix text..."
+                        onBlur={async (e) => {
+                          const newSettings = { 
+                            outputFormat: status.settings.outputFormat,
+                            usePrefixEnabled: status.settings.usePrefixEnabled,
+                            userDefinedPrefix: e.target.value
+                          };
+                          const result = await window.electron.ipcRenderer.invoke('swift:update-settings', newSettings);
+                          if (result.success) {
+                            toast.success('Prefix text updated');
+                            await checkSystemStatus();
+                            await window.electron.ipcRenderer.invoke('process:restart-shortcuts');
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm font-medium">Global Shortcut</span>
-                  <Badge>{status.settings.shortcut}</Badge>
+
+                <div className="pt-4 border-t">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Keyboard Shortcut</p>
+                      <p className="text-xs text-muted-foreground">Global shortcut for formatted paste</p>
+                    </div>
+                    <Badge>{status.settings.shortcut}</Badge>
+                  </div>
                 </div>
               </CardContent>
             </Card>

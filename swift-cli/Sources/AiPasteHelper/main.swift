@@ -10,7 +10,6 @@ struct AiPasteHelper: ParsableCommand {
             FormatCommand.self,
             PasteCommand.self,
             MonitorCommand.self,
-            PermissionsCommand.self,
             SettingsCommand.self,
             ShortcutsCommand.self,
             TestCommand.self
