@@ -3,6 +3,7 @@ import { app, systemPreferences } from 'electron';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { logError, logInfo, logDebug } from './logger';
+import { historyManager } from './history-manager';
 
 interface ManagedProcess {
   name: string;
@@ -60,6 +61,49 @@ export class ProcessManager extends EventEmitter {
     const accessibility = systemPreferences.isTrustedAccessibilityClient(false);
     logInfo(`Permissions check - Accessibility: ${accessibility}`);
     return { accessibility };
+  }
+
+  /**
+   * Start the clipboard monitor daemon
+   */
+  async startClipboardMonitor(): Promise<boolean> {
+    logInfo('ProcessManager: Starting clipboard monitor...');
+    
+    // Check permissions first using Electron API
+    const permissions = this.checkPermissions();
+    if (!permissions.accessibility) {
+      logError('ProcessManager: Cannot start clipboard monitor - accessibility permission not granted');
+      
+      // Request permission using Electron's API
+      logInfo('ProcessManager: Requesting accessibility permission...');
+      systemPreferences.isTrustedAccessibilityClient(true); // This prompts the user
+      
+      this.emit('permission-required', {
+        type: 'accessibility',
+        message: 'Please grant accessibility permission to monitor clipboard'
+      });
+      
+      // Start polling for permission grant
+      this.startPermissionPolling();
+      return false;
+    }
+    
+    // Start the monitor daemon
+    const config: ManagedProcess = {
+      name: 'clipboard-monitor',
+      process: null,
+      command: this.binaryPath,
+      args: ['monitor'],
+      restartAttempts: 0,
+      maxRestarts: 5,
+      restartDelay: 1000,
+      isRunning: false,
+      shouldRestart: true,
+      lastStartTime: Date.now()
+    };
+    
+    this.processes.set('clipboard-monitor', config);
+    return this.startProcess('clipboard-monitor');
   }
 
   /**
@@ -226,7 +270,7 @@ export class ProcessManager extends EventEmitter {
   /**
    * Handle messages from managed processes
    */
-  private handleProcessMessage(processName: string, response: CLIResponse) {
+  private async handleProcessMessage(processName: string, response: CLIResponse) {
     // Check for permission errors first
     if (!response.success && response.error?.includes('permission')) {
       logError(`${processName}: Permission error - ${response.error}`);
@@ -247,14 +291,57 @@ export class ProcessManager extends EventEmitter {
       return;
     }
     
-    if (response.event === 'shortcut-triggered') {
-      logInfo(`Shortcut triggered: ${response.message}`);
-      // Emit event for UI to show paste history
-      this.emit('shortcut-triggered', {
-        message: response.message,
-        data: response.data,
+    // Handle clipboard change from monitor
+    if (response.event === 'clipboard-change' && response.data) {
+      logInfo('Clipboard change detected - storing in history');
+      
+      // Parse JSON data from Swift
+      let clipboardData: any;
+      try {
+        clipboardData = typeof response.data === 'string' 
+          ? JSON.parse(response.data) 
+          : response.data;
+      } catch (error) {
+        logError(`Failed to parse clipboard data: ${error}`);
+        return;
+      }
+      
+      // Extract data from response
+      const { original, formatted, metadata } = clipboardData;
+      
+      // Store in history
+      const historyId = await historyManager.addItem(
+        original,
+        formatted,
+        metadata?.format || 'simple',
+        metadata
+      );
+      
+      // Emit event for UI
+      this.emit('clipboard-formatted', {
+        id: historyId,
+        original,
+        formatted,
+        metadata,
         timestamp: new Date().toISOString()
       });
+    }
+    // Handle shortcut trigger - now paste from history
+    else if (response.event === 'shortcut-triggered') {
+      logInfo(`Shortcut triggered - pasting from history`);
+      
+      // Get latest item from history
+      const latestItem = await historyManager.getLatest();
+      if (latestItem) {
+        // Emit event with history item
+        this.emit('shortcut-triggered', {
+          message: 'Pasting from history',
+          historyItem: latestItem,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        logInfo('No history items available to paste');
+      }
     } else if (response.event === 'key-debug') {
       logDebug(`Key event: ${response.data}`);
     } else if (!response.success) {

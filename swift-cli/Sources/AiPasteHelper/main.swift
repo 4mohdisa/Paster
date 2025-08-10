@@ -12,6 +12,7 @@ struct AiPasteHelper: ParsableCommand {
             MonitorCommand.self,
             SettingsCommand.self,
             ShortcutsCommand.self,
+            TriggerPasteCommand.self,
             TestCommand.self
         ]
     )
@@ -135,12 +136,10 @@ struct PasteCommand: ParsableCommand {
         let actualOutputFormat = outputFormat == "simple" ? settings.outputFormat : outputFormat
 
         var formattedContent: String?
-        var originalContent: String?
 
         // Check for HTML first (Excel/Google Sheets)
         if let htmlData = pasteboard.data(forType: .html),
            let htmlString = String(data: htmlData, encoding: .utf8) {
-            originalContent = htmlString
 
             // Check if it contains table data
             if htmlString.contains("<table") || htmlString.contains("google-sheets-html-origin") {
@@ -223,6 +222,52 @@ struct PasteCommand: ParsableCommand {
     }
 }
 
+// Trigger paste command - just triggers Cmd+V without formatting
+struct TriggerPasteCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "trigger-paste",
+        abstract: "Trigger system paste (Cmd+V) without formatting"
+    )
+
+    func run() throws {
+        // Trigger system paste
+        guard let source = CGEventSource(stateID: .hidSystemState) else {
+            let response = CLIResponse(
+                success: false,
+                message: "Failed to create CGEventSource",
+                error: "Could not create event source"
+            )
+            print(response.toJSON())
+            return
+        }
+
+        // Virtual keycode for 'v' on a US keyboard is 0x09 (9)
+        let vKey: CGKeyCode = 0x09
+
+        // Press 'v' key down with Command modifier
+        if let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true) {
+            keyDown.flags = .maskCommand
+            keyDown.post(tap: .cghidEventTap)
+        }
+
+        // Small delay to ensure key press is registered
+        usleep(10000) // 10ms
+
+        // Release 'v' key with Command modifier
+        if let keyUp = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false) {
+            keyUp.flags = .maskCommand
+            keyUp.post(tap: .cghidEventTap)
+        }
+
+        let response = CLIResponse(
+            success: true,
+            message: "System paste triggered",
+            data: nil
+        )
+        print(response.toJSON())
+    }
+}
+
 // Monitor command - watch clipboard for changes
 struct MonitorCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -259,7 +304,10 @@ struct MonitorCommand: ParsableCommand {
                 lastChangeCount = currentChangeCount
 
                 let pasteboard = NSPasteboard.general
+                var originalContent: String?
                 var formattedContent: String?
+                var detectedAs: String = "unknown"
+                let settings = SettingsManager.shared
 
                 // Check for HTML first (Excel/Google Sheets)
                 if let htmlData = pasteboard.data(forType: .html),
@@ -267,10 +315,12 @@ struct MonitorCommand: ParsableCommand {
 
                     // Check if it contains table data
                     if htmlString.contains("<table") || htmlString.contains("google-sheets-html-origin") {
+                        originalContent = htmlString
+                        detectedAs = "html-table"
                         formattedContent = formatter.createPasteableContent(
                             htmlString,
                             isHTML: true,
-                            outputFormat: "simple"
+                            outputFormat: settings.outputFormat
                         )
                     }
                 }
@@ -279,20 +329,39 @@ struct MonitorCommand: ParsableCommand {
                 if formattedContent == nil,
                    let plainString = pasteboard.string(forType: .string),
                    plainString.contains("\t") {
+                    originalContent = plainString
+                    detectedAs = "tab-delimited"
                     formattedContent = formatter.createPasteableContent(
                         plainString,
                         isHTML: false,
-                        outputFormat: "simple"
+                        outputFormat: settings.outputFormat
                     )
                 }
 
-                // If we have formatted content, send it
-                if let formatted = formattedContent {
+                // If we have formatted content, send both original and formatted
+                if let original = originalContent, let formatted = formattedContent {
+                    // Create metadata
+                    let metadata: [String: Any] = [
+                        "detectedAs": detectedAs,
+                        "format": settings.outputFormat,
+                        "usePrefixEnabled": settings.usePrefixEnabled
+                    ]
+                    
+                    // Convert to JSON string for data field
+                    let dataDict: [String: Any] = [
+                        "original": original,
+                        "formatted": formatted,
+                        "metadata": metadata
+                    ]
+                    
+                    let jsonData = try? JSONSerialization.data(withJSONObject: dataDict)
+                    let jsonString = jsonData != nil ? String(data: jsonData!, encoding: .utf8) : nil
+                    
                     let response = CLIResponse(
                         success: true,
-                        message: "Clipboard formatted",
-                        data: formatted,
-                        event: "clipboard-formatted"
+                        message: "Clipboard change detected",
+                        data: jsonString,
+                        event: "clipboard-change"
                     )
                     print(response.toJSON())
                     fflush(stdout)

@@ -79,6 +79,24 @@ export class SwiftBridge {
   }
 
   /**
+   * Trigger system paste (Cmd+V) without formatting
+   */
+  async triggerSystemPaste(): Promise<boolean> {
+    try {
+      const result = await this.execute(['trigger-paste']);
+      if (result.success) {
+        logInfo('System paste triggered successfully');
+        return true;
+      }
+      logError(`System paste failed: ${result.error}`);
+      return false;
+    } catch (error) {
+      logError(`System paste failed: ${error}`);
+      return false;
+    }
+  }
+
+  /**
    * Start clipboard monitoring (long-running process)
    */
   startClipboardMonitor(callback: (data: string) => void): void {

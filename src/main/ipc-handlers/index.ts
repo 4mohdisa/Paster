@@ -4,6 +4,7 @@ import { logInfo } from "../logger";
 import { registerLicenseHandlers } from "./license";
 import { registerSwiftHandlers } from "./swift";
 import { registerProcessManagerHandlers } from "./process-manager";
+import { registerHistoryHandlers } from "./history";
 
 /**
  * Register all IPC handlers throughout the application
@@ -20,6 +21,9 @@ export function registerAllHandlers(): void {
 	
 	// Register process manager handlers
 	registerProcessManagerHandlers();
+	
+	// Register history handlers
+	registerHistoryHandlers();
 
 	logInfo("All IPC handlers registered successfully");
 }

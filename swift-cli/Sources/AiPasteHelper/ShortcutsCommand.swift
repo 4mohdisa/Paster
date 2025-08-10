@@ -79,47 +79,15 @@ class ShortcutHandler {
     }
 
     private func executePasteCommand() {
-        // Create a Process to run the paste command
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: CommandLine.arguments[0])
-        process.arguments = ["paste"]
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-
-            // Read the output
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            if let output = String(data: data, encoding: .utf8) {
-                // Parse the paste command response
-                if let jsonData = output.data(using: .utf8),
-                   let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
-                   let success = json["success"] as? Bool {
-
-                    // Send event notification
-                    let response = CLIResponse(
-                        success: success,
-                        message: success ? "Paste executed via shortcut" : "Paste failed",
-                        data: json["data"] as? String,
-                        event: "shortcut-triggered"
-                    )
-                    print(response.toJSON())
-                    fflush(stdout)
-                }
-            }
-        } catch {
-            let response = CLIResponse(
-                success: false,
-                message: "Failed to execute paste command",
-                error: error.localizedDescription,
-                event: "shortcut-error"
-            )
-            print(response.toJSON())
-            fflush(stdout)
-        }
+        // Simply emit event - Electron will handle pasting from history
+        let response = CLIResponse(
+            success: true,
+            message: "Shortcut triggered",
+            data: nil,
+            event: "shortcut-triggered"
+        )
+        print(response.toJSON())
+        fflush(stdout)
     }
 }
 

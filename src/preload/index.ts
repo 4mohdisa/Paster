@@ -42,7 +42,15 @@ const electronAPI = {
 	// IPC renderer for events
 	ipcRenderer: {
 		on: (channel: string, listener: (event: any, ...args: any[]) => void) => {
-			const validChannels = ['shortcut-triggered', 'permission-required', 'permission-granted'];
+			const validChannels = [
+				'shortcut-triggered', 
+				'permission-required', 
+				'permission-granted',
+				'history-item-added',
+				'history-cleared',
+				'history-copied',
+				'history-pasted'
+			];
 			if (validChannels.includes(channel)) {
 				ipcRenderer.on(channel, listener);
 			}

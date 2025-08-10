@@ -197,22 +197,61 @@ app.whenReady().then(async () => {
       }
     });
 
-    processManager.on('shortcut-triggered', (data) => {
+    processManager.on('clipboard-formatted', (data) => {
+      // Forward clipboard formatting events to UI
+      logInfo('Clipboard formatted event received, forwarding to UI...');
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('shortcut-triggered', data);
+        logInfo('Sending history-item-added to UI');
+        mainWindow.webContents.send('history-item-added', data);
+      } else {
+        logInfo('Main window not available to send event');
+      }
+    });
+
+    processManager.on('shortcut-triggered', async (data) => {
+      // When shortcut is triggered, paste from history
+      if (data.historyItem) {
+        const { clipboard } = require('electron');
+        const { swiftBridge } = require('./swift-bridge');
+        
+        // Save current clipboard
+        const originalClipboard = clipboard.readText();
+        
+        // Set clipboard to formatted content from history
+        clipboard.writeText(data.historyItem.formatted);
+        
+        // Trigger system paste (just Cmd+V, no formatting)
+        await swiftBridge.triggerSystemPaste();
+        
+        // Restore original clipboard after a delay
+        setTimeout(() => {
+          clipboard.writeText(originalClipboard);
+        }, 100);
+        
+        // Notify UI
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('shortcut-triggered', data);
+        }
       }
     });
 
     // Add a small delay to ensure window is ready for permission dialogs
-    setTimeout(() => {
-      processManager.startShortcutsDaemon().then(success => {
-        if (success) {
-          logInfo('Shortcuts daemon started successfully');
-        } else {
-          logInfo('Shortcuts daemon not started - permission may be required');
-          // The UI will be notified via the 'permission-required' event
-        }
-      });
+    setTimeout(async () => {
+      // Start clipboard monitor for auto-formatting
+      const monitorSuccess = await processManager.startClipboardMonitor();
+      if (monitorSuccess) {
+        logInfo('Clipboard monitor started successfully');
+      } else {
+        logInfo('Clipboard monitor not started - permission may be required');
+      }
+      
+      // Start shortcuts daemon for keyboard monitoring
+      const shortcutsSuccess = await processManager.startShortcutsDaemon();
+      if (shortcutsSuccess) {
+        logInfo('Shortcuts daemon started successfully');
+      } else {
+        logInfo('Shortcuts daemon not started - permission may be required');
+      }
     }, 2000); // 2 second delay for window to be ready
   }
 
