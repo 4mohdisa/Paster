@@ -1,12 +1,15 @@
-# Next.js + Electron Template
+# AiPaste Electron
 
-A full-stack desktop application template built with Next.js and Electron, featuring authentication, database integration, AI capabilities, and a modern UI.
+A macOS desktop application that provides intelligent clipboard management with table formatting, OCR capabilities, and keyboard shortcuts. Built with Electron, Next.js, and a native Swift CLI for macOS integration.
+
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ and pnpm
+- **Node.js 18+** and pnpm
+- **Xcode** and Swift (for building the native CLI)
+- **macOS** (required for native clipboard and permissions features)
 - Git
 
 ### Development Setup
@@ -14,48 +17,147 @@ A full-stack desktop application template built with Next.js and Electron, featu
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd nextjs-electron-template
+   cd electron-aipaste
    ```
 
-2a. **Install dependencies**
+2. **Install Node.js dependencies**
    ```bash
    pnpm install
    ```
 
-2b. **Reinstall electron if necessary**
-On macOS, electron doesn't install properly
+3. **Build the Swift CLI** (Required first!)
    ```bash
-   pnpm install --dangerously-allow-all-builds
-   ```
-Or if you've already done pnpm install, simple run the following and select each build with space bar and then hit Enter
-   ```bash
-   pnpm approve-builds
+   pnpm run swift:build
    ```
 
-3. **Set up environment variables**
+4. **Set up environment variables**
    ```bash
    cp _env.example .env
    ```
-   Not necessary to edit `.env` unless you wanted to add auth, license, usage, etc.
+   Edit `.env` if you want to configure authentication or other features.
 
-4. **Start the development server**
+5. **Start the development server**
    ```bash
    pnpm run dev
    ```
 
-5. **Initialize the database** (while the application is running)
-   In a new terminal window:
-   ```bash
-   pnpm db:push --force
-   ```
+The application will open in Electron. On first launch, it will guide you through:
+- Granting Accessibility permissions (required for keyboard shortcuts)
+- Testing clipboard functionality
+- Configuring table formatting preferences
 
-6. **Restart the development server**
-   Exit the current `pnpm run dev` process and start it again:
-   ```bash
-   pnpm run dev
-   ```
+## 📖 How to Use AiPaste
 
-The application will open in Electron and will load the nextjs server at localhost:3000
+### 🚀 Getting Started
+
+1. **First Launch**: The app will open an onboarding window
+2. **Grant Permissions**: Click "Request Permissions" to enable:
+   - **Accessibility**: Required for the Cmd+Shift+V keyboard shortcut
+   - **Screen Recording**: May be needed for some clipboard operations
+3. **Test Functionality**: The app will verify everything is working
+4. **Choose Settings**: Pick your preferred table format and options
+
+### 🎯 Basic Usage (Automatic Clipboard Formatting)
+
+AiPaste works automatically in the background - no manual intervention needed!
+
+1. **Copy Any Table**: 
+   - Copy data from Excel, Google Sheets, Numbers, or any spreadsheet
+   - Copy HTML tables from websites
+   - Copy tab-delimited text from anywhere
+
+2. **Automatic Detection**: 
+   - AiPaste detects when you copy tabular data
+   - It automatically formats the data based on your preferences
+   - The formatted version replaces your clipboard content
+
+3. **Paste Anywhere**: 
+   - Use Cmd+V to paste the beautifully formatted table
+   - Works in Slack, Discord, emails, documentation, anywhere!
+
+### ⌨️ Using Keyboard Shortcuts
+
+**Cmd+Shift+V** - Access Clipboard History
+
+1. **Press the shortcut** while in any application
+2. **Browse your history** - see all previously formatted tables
+3. **Click any item** to copy it back to your clipboard
+4. **Paste normally** with Cmd+V in your target application
+
+### 📋 Working with Clipboard History
+
+The history panel shows:
+- **Formatted content preview**
+- **Original timestamp** when you copied it
+- **Format type** (Simple, Markdown, Pretty, HTML)
+- **Click to copy** - instantly copies the item back to clipboard
+
+### ⚙️ Customizing Your Experience
+
+**Access Settings**: Click the settings icon in the dashboard or history panel
+
+**Format Options**:
+- **Simple**: Clean tab-delimited format (great for plain text)
+- **Markdown**: GitHub-style tables (perfect for documentation)  
+- **Pretty**: ASCII art tables with borders (nice for Slack/Discord)
+- **HTML**: Full HTML markup (for web pages and rich text)
+
+**Prefix Options**:
+- Enable: Adds "Below is a table showing..." before your data
+- Disable: Just the raw formatted table
+
+**Process Management**:
+- Start/Stop the background monitoring
+- View real-time status
+- Health monitoring
+
+### 💡 Common Use Cases
+
+- **Excel → Slack/Discord**: Auto-formats with borders for chat apps
+- **Google Sheets → Documentation**: Markdown tables for GitHub/Notion
+- **Website Tables → Email**: Clean conversion without messy HTML
+- **Quick Reuse**: Press Cmd+Shift+V to access any previous table
+
+### 🎨 Format Examples
+
+**Markdown** (for documentation):
+```
+| Name | Age | City     |
+|------|-----|----------|
+| John | 30  | New York |
+```
+
+**Pretty** (for chat apps):
+```
+┌──────┬─────┬──────────┐
+│ Name │ Age │ City     │
+├──────┼─────┼──────────┤
+│ John │ 30  │ New York │
+└──────┴─────┴──────────┘
+```
+
+### 💡 Tips
+
+**Performance**:
+- The app uses minimal CPU when monitoring clipboard
+- History is stored locally and privately
+- No data ever leaves your computer
+
+**Format Selection**:
+- Use **Markdown** for documentation and GitHub
+- Use **Pretty** for Slack, Discord, or terminal output  
+- Use **Simple** for basic text applications
+- Use **HTML** when pasting into rich text editors
+
+**Managing History**:
+- History persists between app restarts
+- Items show timestamps for easy identification
+- Most recent items appear at the top
+
+**Troubleshooting**:
+- If shortcuts stop working, check accessibility permissions
+- If formatting seems off, try copying the original data again
+- Use the dashboard to monitor real-time status
 
 ## 🏗️ Project Structure
 
@@ -63,27 +165,133 @@ The application will open in Electron and will load the nextjs server at localho
 ├── src/
 │   ├── app/              # Next.js App Router pages
 │   ├── components/       # React components and UI library
-│   ├── hooks/           # Custom React hooks
-│   ├── lib/             # Utilities, database, and AI modules
 │   ├── main/            # Electron main process
+│   │   ├── swift-bridge.ts    # Swift CLI integration
+│   │   └── process-manager.ts # Process management
 │   ├── preload/         # Electron preload scripts
-│   └── stores/          # State management
+│   └── lib/             # Utilities, database, and AI modules
+├── swift-cli/           # Native Swift CLI component
+│   ├── Sources/         # Swift source code
+│   │   └── AiPasteHelper/     # Main CLI implementation
+│   └── Package.swift   # Swift package configuration
+├── agent-docs/          # Development documentation and reports
 ├── resources/           # Static resources and binaries
-├── scripts/             # Setup and utility scripts
-└── packages/            # Workspace packages
+└── scripts/             # Setup and utility scripts
 ```
 
-## 🛠️ Technologies
+## 🛠️ Swift CLI Integration
+
+AiPaste uses a native Swift CLI to handle macOS-specific features that require low-level system access.
+
+### Building the Swift CLI
+
+```bash
+# Build for development
+pnpm run swift:build
+
+# Or manually
+cd swift-cli && swift build -c release
+```
+
+### Available CLI Commands
+
+```bash
+# Test CLI functionality
+./.build/debug/AiPasteHelper test
+
+# Format clipboard data (stdin)
+echo -e "Name\tAge\nJohn\t30" | ./.build/debug/AiPasteHelper format --stdin
+
+# Monitor clipboard changes (long-running)
+./.build/debug/AiPasteHelper monitor
+
+# Execute paste with formatting
+./.build/debug/AiPasteHelper paste
+
+# Manage settings
+./.build/debug/AiPasteHelper settings get
+./.build/debug/AiPasteHelper settings set prefix true
+
+# Check system permissions
+./.build/debug/AiPasteHelper permissions
+
+# Start keyboard shortcut monitoring
+./.build/debug/AiPasteHelper shortcuts
+```
+
+### Swift CLI Features
+
+- **Table Formatting**: Converts tabular data from Excel/Google Sheets to various formats
+- **Clipboard Monitoring**: Real-time detection of clipboard changes
+- **Keyboard Shortcuts**: System-wide Cmd+Shift+V support
+- **Settings Management**: JSON-based configuration
+- **Permissions Checking**: Accessibility and screen recording permissions
+
+### Communication Protocol
+
+The Swift CLI communicates with Electron using JSON over stdout/stdin:
+
+```typescript
+// Electron → Swift CLI
+spawn('AiPasteHelper', ['format', '--input', data])
+
+// Swift CLI → Electron (JSON response)
+{
+  "success": true,
+  "data": "formatted table data",
+  "message": "Table formatted successfully"
+}
+```
+
+## 🔧 Technologies
 
 - **Frontend**: Next.js 15, React 19, TypeScript
 - **Desktop**: Electron 36
+- **Native Backend**: Swift CLI with macOS system integration
 - **Database**: PostgreSQL with Drizzle ORM
 - **Cache**: Redis
 - **Authentication**: Clerk / Better Auth (configurable)
 - **AI**: Anthropic Claude / OpenAI (configurable)
 - **UI**: Tailwind CSS, shadcn/ui, Radix UI
 - **State**: Zustand
-- **Build**: tsup, electron-builder
+- **Build**: tsup, electron-builder, Swift Package Manager
+
+## ✨ Key Features
+
+### 📋 Intelligent Clipboard Management
+- **Real-time Monitoring**: Automatically detects when you copy tabular data from Excel, Google Sheets, or any application
+- **Auto-formatting**: Instantly converts tables to clean, readable formats
+- **Multiple Formats**: Choose from Simple, Markdown, Pretty Table, or HTML formats
+- **Smart Prefixes**: Optional descriptive text like "Below is a table showing..."
+
+### ⌨️ Keyboard Shortcuts
+- **Cmd+Shift+V**: Global shortcut to paste from clipboard history
+- **System Integration**: Works across all applications system-wide
+- **Permission Management**: Guided setup for Accessibility permissions
+
+### 📊 Table Formatting Options
+- **Simple**: Clean tab-delimited format
+- **Markdown**: GitHub-style markdown tables
+- **Pretty**: ASCII art tables with borders
+- **HTML**: Full HTML table markup
+
+### 💾 Clipboard History
+- **Persistent Storage**: All formatted items saved locally
+- **Click to Copy**: Easy access to previous clipboard items
+- **Auto-formatting**: Historical items show in your preferred format
+- **Metadata Tracking**: Timestamps and format information
+
+### ⚙️ Settings & Configuration
+- **Format Preferences**: Set your default table format
+- **Prefix Control**: Enable/disable descriptive prefixes
+- **Process Management**: Start/stop background monitoring
+- **Permission Status**: Real-time permission monitoring
+
+### 🖥️ Native macOS Integration
+- **Swift CLI**: High-performance native backend
+- **System Permissions**: Proper Accessibility and Screen Recording integration
+- **Background Processing**: Minimal CPU usage with efficient monitoring
+- **Auto-restart**: Robust process management with health monitoring
 
 ## 📝 Environment Variables
 
@@ -134,8 +342,17 @@ NEXT_PUBLIC_API_URL=your-api-url
 ## 🚀 Available Scripts
 
 ### Development
-- `pnpm run dev` - Start the Electron app in development mode
+- `pnpm run dev` - Start the full Electron app with Swift CLI
 - `pnpm run next:dev` - Start only the Next.js development server
+
+### Swift CLI
+- `pnpm run swift:build` - Build the Swift CLI component
+- `pnpm run swift:test` - Test Swift CLI functionality (if available)
+
+### Building
+- `pnpm run build` - Build everything (Swift CLI + Electron + Next.js)
+- `pnpm run dist` - Build and package the complete application
+- `pnpm run electron:dist` - Create distribution packages
 
 ### Database
 - `pnpm db:push` - Push database schema changes
@@ -143,11 +360,6 @@ NEXT_PUBLIC_API_URL=your-api-url
 - `pnpm db:generate` - Generate database migrations
 - `pnpm db:migrate` - Run database migrations
 - `pnpm db:studio` - Open Drizzle Studio
-
-### Building
-- `pnpm run build` - Build the application for production
-- `pnpm run dist` - Build and package the application
-- `pnpm run electron:dist` - Create distribution packages
 
 ### Code Quality
 - `pnpm run lint` - Run ESLint
@@ -159,16 +371,26 @@ NEXT_PUBLIC_API_URL=your-api-url
 - `pnpm run setup:interactive` - Run interactive setup script
 - `pnpm run setup:validate` - Validate setup configuration
 
-## 🎯 Key Features
+## 🧪 Testing the Application
 
-- **🔐 Authentication**: Configurable authentication with Clerk or Better Auth
-- **💾 Database**: PostgreSQL with Drizzle ORM for type-safe database operations
-- **⚡ Caching**: Redis integration for performance optimization
-- **🤖 AI Integration**: Support for Anthropic Claude and OpenAI APIs
-- **🎨 Modern UI**: Beautiful interface with Tailwind CSS and shadcn/ui
-- **📱 Responsive**: Works seamlessly across different screen sizes
-- **🔧 Type Safety**: Full TypeScript support throughout the stack
-- **📦 Package Management**: Monorepo structure with pnpm workspaces
+### Quick Swift CLI Test
+```bash
+# Build the CLI first
+pnpm run swift:build
+
+# Test basic functionality
+./.build/debug/AiPasteHelper test
+
+# Test table formatting
+echo -e "Name\tAge\nJohn\t30\nJane\t25" | ./.build/debug/AiPasteHelper format --stdin -o markdown
+```
+
+### Full Integration Test
+1. **Start the app**: `pnpm run dev`
+2. **Complete onboarding**: Grant permissions when prompted
+3. **Test clipboard formatting**: Copy a table from Excel or Google Sheets
+4. **Test keyboard shortcut**: Press `Cmd+Shift+V` to access clipboard history
+5. **Check settings**: Use the settings panel to configure formats
 
 ## 🗃️ Database Setup
 
@@ -226,15 +448,78 @@ This project is private and proprietary.
 
 ## 🆘 Troubleshooting
 
-### Common Issues
+### Swift CLI Issues
+
+**Swift build fails**: 
+- Ensure Xcode is installed: `xcode-select --install`
+- Check Swift version: `swift --version` (requires 5.9+)
+- Try cleaning: `cd swift-cli && swift package clean && swift build`
+
+**AiPasteHelper not found**:
+- Build the CLI first: `pnpm run swift:build`
+- Check binary exists: `ls -la swift-cli/.build/debug/AiPasteHelper`
+- Verify permissions: `chmod +x swift-cli/.build/debug/AiPasteHelper`
+
+**Permission issues**:
+- Grant Accessibility permissions in System Preferences > Security & Privacy > Privacy > Accessibility
+- Add the Electron app or Terminal to the allowed apps list
+- For Screen Recording permissions, add to the Screen Recording section
+
+**Keyboard shortcuts not working**:
+- Verify permissions are granted (use `AiPasteHelper permissions`)
+- Check if another app is using Cmd+Shift+V
+- Try restarting the shortcuts daemon: Stop and restart the app
+
+### Electron/Node Issues
 
 **Database connection issues**: Ensure PostgreSQL is running when you execute `pnpm db:push`. The easiest way is to have `pnpm run dev` running in another terminal.
 
 **Port conflicts**: If you encounter port conflicts, check that ports 3000 (Next.js) and 5434 (PostgreSQL) are available.
 
-**Environment variables**: Double-check that your `.env.local` file is properly configured with the required variables.
+**Environment variables**: Double-check that your `.env` file is properly configured with the required variables.
 
 **Dependencies**: If you encounter dependency issues, try deleting `node_modules` and `pnpm-lock.yaml`, then run `pnpm install` again.
+
+## 🏗️ Architecture & Development
+
+### Application Architecture
+```
+┌─────────────────┐    JSON/IPC    ┌──────────────────┐
+│   Electron UI   │ ◄─────────────► │   Swift CLI      │
+│  (TypeScript)   │                │  (AiPasteHelper) │
+├─────────────────┤                ├──────────────────┤
+│ • Settings UI   │                │ • Clipboard Mon. │
+│ • Dashboard     │                │ • Table Format   │
+│ • History View  │                │ • Shortcuts      │
+│ • Permissions   │                │ • Permissions    │
+└─────────────────┘                └──────────────────┘
+         │                                   │
+         ▼                                   ▼
+┌─────────────────┐                ┌──────────────────┐
+│   Next.js App   │                │  macOS System    │
+│   (Frontend)    │                │   Integration    │
+└─────────────────┘                └──────────────────┘
+```
+
+### Development Workflow
+1. **Swift CLI Development**: Make changes in `swift-cli/Sources/AiPasteHelper/`
+2. **Build Swift**: Run `pnpm run swift:build`
+3. **Test CLI**: Use `./.build/debug/AiPasteHelper test`
+4. **Electron Development**: Make changes in `src/main/` and `src/app/`
+5. **Integration Testing**: Run `pnpm run dev` to test full integration
+
+### Communication Flow
+1. **User Action** (copy table, press shortcut)
+2. **Swift CLI Detection** (clipboard monitoring, event tap)
+3. **Processing** (table parsing, formatting)
+4. **JSON Response** (structured data back to Electron)
+5. **UI Update** (real-time status, history updates)
+
+### File Organization
+- **Swift CLI**: All native macOS functionality
+- **Electron Main**: Process management, IPC handlers, Swift bridge
+- **Next.js Frontend**: User interface, settings, dashboard
+- **Agent Docs**: Development progress tracking and reports
 
 ### Getting Help
 
