@@ -154,8 +154,7 @@ struct PasteCommand: ParsableCommand {
         // If no HTML table, check for tab-delimited plain text
         if formattedContent == nil,
            let plainString = pasteboard.string(forType: .string) {
-            originalContent = plainString
-
+            
             // Only format if it contains tabs (likely spreadsheet data)
             if plainString.contains("\t") {
                 formattedContent = formatter.createPasteableContent(
