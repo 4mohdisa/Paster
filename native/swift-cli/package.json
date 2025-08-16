@@ -1,0 +1,10 @@
+{
+  "name": "@aipaste/swift-cli",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Native Swift CLI for clipboard formatting",
+  "scripts": {
+    "build": "swift build -c release",
+    "clean": "swift package clean"
+  }
+}

@@ -1,6 +1,6 @@
-# AiPaste Electron
+# AiPaste Monorepo
 
-A macOS desktop application that provides intelligent clipboard management with table formatting, OCR capabilities, and keyboard shortcuts. Built with Electron, Next.js, and a native Swift CLI for macOS integration.
+A macOS desktop application that provides intelligent clipboard management with table formatting, OCR capabilities, and keyboard shortcuts. Built as a monorepo with Electron, Next.js, and a native Swift CLI for macOS integration.
 
 
 ## 🚀 Quick Start
@@ -20,25 +20,21 @@ A macOS desktop application that provides intelligent clipboard management with 
    cd electron-aipaste
    ```
 
-2. **Install Node.js dependencies**
+2. **Install dependencies**
    ```bash
    pnpm install
    ```
 
 3. **Build the Swift CLI** (Required first!)
    ```bash
-   pnpm run swift:build
+   pnpm --filter @aipaste/electron swift:build
+   # or from root:
+   pnpm swift:build
    ```
 
-4. **Set up environment variables**
+4. **Start the development server**
    ```bash
-   cp _env.example .env
-   ```
-   Edit `.env` if you want to configure authentication or other features.
-
-5. **Start the development server**
-   ```bash
-   pnpm run dev
+   pnpm dev
    ```
 
 The application will open in Electron. On first launch, it will guide you through:
@@ -159,24 +155,27 @@ The history panel shows:
 - If formatting seems off, try copying the original data again
 - Use the dashboard to monitor real-time status
 
-## 🏗️ Project Structure
+## 🏗️ Monorepo Structure
 
 ```
-├── src/
-│   ├── app/              # Next.js App Router pages
-│   ├── components/       # React components and UI library
-│   ├── main/            # Electron main process
+├── apps/
+│   ├── main-window/     # Next.js UI (@aipaste/main-window)
+│   └── menubar/        # Future menubar app
+├── electron/           # Electron backend (@aipaste/electron)
+│   ├── main/          # Main process
 │   │   ├── swift-bridge.ts    # Swift CLI integration
 │   │   └── process-manager.ts # Process management
-│   ├── preload/         # Electron preload scripts
-│   └── lib/             # Utilities, database, and AI modules
-├── swift-cli/           # Native Swift CLI component
-│   ├── Sources/         # Swift source code
-│   │   └── AiPasteHelper/     # Main CLI implementation
-│   └── Package.swift   # Swift package configuration
-├── agent-docs/          # Development documentation and reports
-├── resources/           # Static resources and binaries
-└── scripts/             # Setup and utility scripts
+│   └── preload/       # Preload scripts
+├── native/            # Native modules
+│   └── swift-cli/     # Swift CLI (@aipaste/swift-cli)
+│       ├── Sources/   # Swift source code
+│       │   └── AiPasteHelper/  # Main CLI implementation
+│       └── Package.swift       # Swift package configuration
+├── packages/          # Shared packages
+│   ├── ui/           # UI components (@aipaste/ui)
+│   └── config-typescript/ # Shared TypeScript configs
+├── agent-docs/       # Development documentation and reports
+└── pnpm-workspace.yaml # Workspace configuration
 ```
 
 ## 🛠️ Swift CLI Integration
@@ -186,11 +185,11 @@ AiPaste uses a native Swift CLI to handle macOS-specific features that require l
 ### Building the Swift CLI
 
 ```bash
-# Build for development
-pnpm run swift:build
+# Build for development (from root)
+pnpm swift:build
 
 # Or manually
-cd swift-cli && swift build -c release
+cd native/swift-cli && swift build -c release
 ```
 
 ### Available CLI Commands
@@ -241,6 +240,47 @@ spawn('AiPasteHelper', ['format', '--input', data])
   "data": "formatted table data",
   "message": "Table formatted successfully"
 }
+```
+
+## 📦 Monorepo Commands
+
+### Package-specific Commands
+
+```bash
+# Run command in specific package
+pnpm --filter @aipaste/electron <command>
+pnpm --filter @aipaste/main-window <command>
+pnpm --filter @aipaste/swift-cli <command>
+
+# Examples
+pnpm --filter @aipaste/electron build
+pnpm --filter @aipaste/main-window dev
+pnpm --filter @aipaste/ui add react-hook-form
+
+# Run command in all packages
+pnpm run --parallel <command>
+```
+
+### Common Development Commands
+
+```bash
+# Development (starts all apps)
+pnpm dev
+
+# Build all packages
+pnpm build
+
+# Build distribution
+pnpm dist
+
+# Type checking
+pnpm typecheck
+
+# Linting
+pnpm lint
+
+# Clean all build artifacts
+pnpm clean
 ```
 
 ## 🔧 Technologies

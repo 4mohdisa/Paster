@@ -1,0 +1,8 @@
+{
+  "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
+  "include": ["main/**/*", "preload/**/*"],
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "./build"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "watch": ["build"],
+  "exec": "electron .",
+  "ext": "js",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "signal": "SIGTERM",
+  "delay": "500ms"
+}

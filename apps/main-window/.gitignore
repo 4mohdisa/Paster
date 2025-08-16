@@ -1,0 +1,29 @@
+# Build outputs
+build/
+.next/
+dist/
+out/
+*.tsbuildinfo
+
+# Logs
+*.log
+logs/
+
+# Node modules (if not using pnpm workspace)
+node_modules/
+
+# Environment files
+.env.local
+.env.production
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Electron
+electron-dist/
+release/

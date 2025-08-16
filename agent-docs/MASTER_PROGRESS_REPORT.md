@@ -1,10 +1,10 @@
-# AiPaste Electron - Master Progress Report
+# AiPaste Monorepo - Master Progress Report
 
 ## Project Overview
-**Goal**: Port AiPaste and TRex features to Electron using Swift CLI for native functionality  
-**Start Date**: Current Session  
+**Goal**: Port AiPaste and TRex features to Electron using Swift CLI for native functionality in a monorepo architecture  
+**Architecture**: pnpm workspace monorepo with Next.js UI and Swift CLI  
 **Status**: 🟢 Full Stack Complete - CLI, UI, and Integration  
-**Last Updated**: January 12, 2025  
+**Last Updated**: 2025-08-16  
 **Completion**: 95%
 
 ---
@@ -57,6 +57,7 @@ gantt
 ### ✅ Phase 1: Foundation (100% Complete)
 | Component | Status | Report | Completion Date |
 |-----------|--------|--------|-----------------|
+| Monorepo Setup | ✅ Complete | pnpm workspaces with @aipaste/* namespace | Session 1 |
 | Swift CLI Structure | ✅ Complete | [Technical Report](./SWIFT_CLI_TECHNICAL_REPORT.md) | Session 1 |
 | Table Formatter | ✅ Complete | [Implementation Details](#table-formatter-implementation) | Session 1 |
 | Clipboard Monitor | ✅ Complete | [Implementation Details](#clipboard-monitor-implementation) | Session 1 |
@@ -104,9 +105,9 @@ gantt
 ### UI Components Implementation
 **Date**: Current Session  
 **Files Created**: 
-- `src/components/onboarding.tsx`
-- `src/components/aipaste-settings.tsx`
-- `src/components/dashboard.tsx`
+- `apps/main-window/src/components/onboarding.tsx`
+- `apps/main-window/src/components/dashboard.tsx`
+- `apps/main-window/src/components/navigation-sidebar.tsx`
 
 **Key Features**:
 - ✅ **Onboarding Flow** - Welcome → Permissions → Test → Complete
@@ -125,8 +126,9 @@ gantt
 ### Process Manager Implementation
 **Date**: Current Session  
 **Files Created/Modified**: 
-- `src/main/process-manager.ts`
-- `src/main/ipc-handlers/process-manager.ts`
+- `electron/main/process-manager.ts`
+- `electron/main/ipc-handlers/process-manager.ts`
+- `electron/main/config/paths.ts` (centralized path configuration)
 
 **Key Features**:
 - ✅ Robust daemon management with health monitoring
@@ -147,8 +149,8 @@ gantt
 ### Table Formatter Implementation
 **Date**: Session 1  
 **Files Modified**: 
-- `swift-cli/Sources/AiPasteHelper/TableFormatter.swift`
-- `swift-cli/Sources/AiPasteHelper/main.swift`
+- `native/swift-cli/Sources/AiPasteHelper/TableFormatter.swift`
+- `native/swift-cli/Sources/AiPasteHelper/main.swift`
 
 **Key Achievements**:
 - ✅ Direct port from PasteManager.swift

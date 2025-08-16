@@ -1,9 +1,5 @@
-onlyBuiltDependencies:
-  - '@biomejs/biome'
-  - '@clerk/shared'
-  - '@tailwindcss/oxide'
-  - electron
-  - electron-winstaller
-  - esbuild
-  - sharp
-  - unrs-resolver
+packages:
+  - 'apps/*'
+  - 'packages/*'
+  - 'native/*'
+  - 'electron'

@@ -1,0 +1,35 @@
+{
+  "name": "@aipaste/electron",
+  "version": "0.0.1",
+  "private": true,
+  "main": "build/main/index.js",
+  "scripts": {
+    "dev": "concurrently --names \"build,app\" --prefix-colors \"blue,green\" \"tsup --watch\" \"nodemon\"",
+    "build": "tsup",
+    "swift:build": "cd ../native/swift-cli && swift build -c release",
+    "dist": "pnpm swift:build && electron-builder --dir",
+    "dist:prod": "pnpm swift:build && electron-builder --config electron-builder-prod.yml",
+    "clean": "rm -rf build dist out",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0",
+    "electron-log": "^5.4.0",
+    "get-port-please": "^3.2.0",
+    "next": "15.3.2",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@aipaste/typescript-config": "workspace:*",
+    "@electron-toolkit/tsconfig": "^1.0.1",
+    "@types/node": "^22.15.18",
+    "@types/uuid": "^10.0.0",
+    "concurrently": "^9.2.0",
+    "electron": "^36.2.1",
+    "electron-builder": "^26.0.12",
+    "nodemon": "^3.1.10",
+    "tsup": "^8.5.0"
+  }
+}
