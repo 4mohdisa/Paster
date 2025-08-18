@@ -1,6 +1,7 @@
 import { ThemeProvider } from '@/components/providers/theme-provider';
-import { Toaster } from '@aipaste/ui';
-import "@aipaste/ui/src/styles/globals.css";
+import { ConvexClientProvider } from '@/providers/convex-provider';
+import { Toaster } from '@aipaste/ui/components';
+import "@aipaste/ui/styles/globals.css";
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 
@@ -26,8 +27,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <ConvexClientProvider>
             {children}
             <Toaster />
+          </ConvexClientProvider>
         </ThemeProvider>
       </body>
     </html>

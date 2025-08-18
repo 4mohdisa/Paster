@@ -13,16 +13,16 @@ import {
   SelectValue,
   Sidebar,
   SidebarContent,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
   Textarea
-} from "@aipaste/ui";
+} from "@aipaste/ui/components";
 import { CheckCircle, FileText, HelpCircle, Home, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { HistoryPanel } from "./history-panel";
 
 interface SystemStatus {
   permissionGranted: boolean;
@@ -34,18 +34,6 @@ interface SystemStatus {
   };
 }
 
-interface PasteHistoryItem {
-  id: string;
-  timestamp: string;
-  original: string;
-  formatted: string;
-  format: string;
-  metadata?: {
-    detectedAs: string;
-    rowCount?: number;
-    columnCount?: number;
-  };
-}
 
 export default function Dashboard() {
   const [status, setStatus] = useState<SystemStatus>({
@@ -58,7 +46,6 @@ export default function Dashboard() {
     }
   });
   const [activeSection, setActiveSection] = useState("general");
-  const [pasteHistory, setPasteHistory] = useState<PasteHistoryItem[]>([]);
 
   useEffect(() => {
     checkSystemStatus();
@@ -66,52 +53,20 @@ export default function Dashboard() {
     // Set up periodic status check
     const interval = setInterval(checkSystemStatus, 5000);
 
-    // Load initial history
-    loadHistory();
-
-    // Listen for history events from main process
-    const handleHistoryAdded = (_event: any, data: any) => {
-      // Add the new item directly to the state instead of reloading
-      setPasteHistory((prev) => {
-        // Add new item at the beginning and limit to 20 items
-        const newHistory = [data, ...prev].slice(0, 20);
-        return newHistory;
-      });
-      toast.success("Clipboard formatted and saved!");
-    };
-
+    // Listen for shortcut events
     const handleShortcutTriggered = (_event: any, _data: any) => {
       toast.success("Pasted from history!");
     };
 
-    const handleHistoryCleared = () => {
-      setPasteHistory([]);
-    };
-
     // Subscribe to events
-    window.electron?.ipcRenderer?.on("history-item-added", handleHistoryAdded);
     window.electron?.ipcRenderer?.on("shortcut-triggered", handleShortcutTriggered);
-    window.electron?.ipcRenderer?.on("history-cleared", handleHistoryCleared);
 
     return () => {
       clearInterval(interval);
       // Clean up event listeners
-      window.electron?.ipcRenderer?.removeAllListeners("history-item-added");
       window.electron?.ipcRenderer?.removeAllListeners("shortcut-triggered");
-      window.electron?.ipcRenderer?.removeAllListeners("history-cleared");
     };
   }, []);
-
-  const loadHistory = async () => {
-    try {
-      const result = await window.electron.ipcRenderer.invoke("history:get-all", 20);
-      if (result.success && result.data) {
-        setPasteHistory(result.data);
-      }
-    } catch (error) {
-      console.error("Failed to load history:", error);
-    }
-  };
 
   const checkSystemStatus = async () => {
     try {
@@ -162,14 +117,6 @@ export default function Dashboard() {
     if (activeSection === "general") {
       return (
         <div className="h-full">
-          {/* Page Header */}
-          <div className="border-b px-8 py-6">
-            <h1 className="text-2xl font-semibold tracking-tight">General</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Configure table formatting and system settings
-            </p>
-          </div>
-
           <div className="px-8 py-6">
             {/* Status Alert - Only show if there's an issue */}
             {!allSystemsGo && (
@@ -314,99 +261,8 @@ export default function Dashboard() {
     if (activeSection === "history") {
       return (
         <div className="h-full flex flex-col">
-          {/* Page Header */}
-          <div className="flex items-center justify-between border-b px-8 py-6">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">History</h1>
-              <p className="text-muted-foreground text-sm mt-1">
-                Auto-formatted clipboard items ready to paste
-              </p>
-            </div>
-            {pasteHistory.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  await window.electron.ipcRenderer.invoke("history:clear");
-                  setPasteHistory([]);
-                  toast.success("History cleared");
-                }}
-              >
-                Clear All
-              </Button>
-            )}
-          </div>
-
-          {/* History Content */}
           <div className="px-8 py-6 overflow-y-auto">
-            {pasteHistory.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center py-16">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                  <FileText className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">No clipboard history yet</h3>
-                <p className="text-muted-foreground text-sm max-w-sm">
-                  Copy spreadsheet data to automatically format and save to your history
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {pasteHistory.map((item) => (
-                  <div
-                    key={item.id}
-                    className="group relative border-b border-border hover:bg-muted/30 transition-colors duration-200 cursor-pointer py-4"
-                    onClick={async () => {
-                      const result = await window.electron.ipcRenderer.invoke(
-                        "history:copy-item",
-                        item.id
-                      );
-                      if (result.success) {
-                        toast.success("Copied to clipboard!");
-                      } else {
-                        toast.error("Failed to copy");
-                      }
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-6">
-                      <div className="flex-1 min-w-0">
-                        {/* Header with metadata */}
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(item.timestamp).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit"
-                            })}
-                          </span>
-                          {item.format !== "simple" && (
-                            <Badge variant="outline" className="text-[10px] h-5">
-                              {item.format}
-                            </Badge>
-                          )}
-                          {item.metadata?.rowCount && item.metadata?.columnCount && (
-                            <span className="text-xs text-muted-foreground">
-                              {item.metadata.rowCount}×{item.metadata.columnCount} table
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Content preview */}
-                        <div className="font-mono text-xs text-muted-foreground leading-relaxed">
-                          {item.formatted.substring(0, 150)}
-                          {item.formatted.length > 150 && (
-                            <span className="text-muted-foreground/60">...</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Hover indicator */}
-                      <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="text-xs text-muted-foreground">Click to copy</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <HistoryPanel />
           </div>
         </div>
       );
@@ -415,14 +271,6 @@ export default function Dashboard() {
     if (activeSection === "help") {
       return (
         <div className="h-full">
-          {/* Page Header */}
-          <div className="border-b px-8 py-6">
-            <h1 className="text-2xl font-semibold tracking-tight">Help</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Learn how to use AiPaste effectively
-            </p>
-          </div>
-
           <div className="px-8 py-6">
             {/* How it works */}
             <div className="space-y-8 max-w-3xl">

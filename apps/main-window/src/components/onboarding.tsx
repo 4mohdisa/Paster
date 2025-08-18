@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, AlertDescription, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@aipaste/ui';
+import { Alert, AlertDescription, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@aipaste/ui/components';
 import { ArrowRight, CheckCircle, Clipboard, Keyboard, Loader2, Shield, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
