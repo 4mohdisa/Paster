@@ -111,6 +111,35 @@ app.whenReady().then(async () => {
     }
   });
 
+  // Start Convex backend (doesn't need permissions)
+  try {
+    logInfo('Starting Convex backend...');
+    await processManager.startConvexBackend();
+  } catch (error: any) {
+    logError(`Failed to start Convex backend: ${error.message}`);
+    // Continue running - app can work without Convex
+  }
+
+  // Listen for Convex events
+  processManager.on('convex-ready', async (info) => {
+    logInfo(`Convex backend ready at ${info.backendUrl}`);
+    
+    // Initialize Convex client for backend use
+    const { convexClient } = await import('./convex-client');
+    convexClient.initialize(info.backendUrl);
+    
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('convex-ready', info);
+    }
+  });
+
+  processManager.on('convex-error', (error) => {
+    logError(`Convex backend error: ${error.message}`);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('convex-error', error);
+    }
+  });
+
   // Check permissions and start daemons
   const permissions = processManager.checkPermissions();
   if (permissions.accessibility) {

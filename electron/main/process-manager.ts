@@ -4,6 +4,8 @@ import { EventEmitter } from 'events';
 import { pathConfig } from './config/paths';
 import { logError, logInfo, logDebug } from './logger';
 import { historyManager } from './history-manager';
+import * as fs from 'fs';
+import * as net from 'net';
 
 interface ManagedProcess {
   name: string;
@@ -31,6 +33,7 @@ export class ProcessManager extends EventEmitter {
   private processes: Map<string, ManagedProcess> = new Map();
   private isShuttingDown: boolean = false;
   private binaryPath: string;
+  private convexInfo: { backendUrl: string; actionsUrl: string; dataDir: string } | null = null;
 
   constructor() {
     super();
@@ -504,6 +507,216 @@ export class ProcessManager extends EventEmitter {
     }
     
     return false;
+  }
+
+  /**
+   * Check if a port is available
+   */
+  private async isPortAvailable(port: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const server = net.createServer();
+      server.once('error', () => resolve(false));
+      server.once('listening', () => {
+        server.close();
+        resolve(true);
+      });
+      server.listen(port, '127.0.0.1');
+    });
+  }
+
+  /**
+   * Start the Convex backend process
+   */
+  async startConvexBackend(): Promise<boolean> {
+    logInfo('ProcessManager: Starting Convex backend...');
+    
+    // Get configuration
+    const convexConfig = pathConfig.getConvexConfig();
+    const dataDir = pathConfig.getConvexDataDir();
+    const binaryPath = pathConfig.getConvexBinaryPath();
+    
+    // Check if binary exists
+    if (!fs.existsSync(binaryPath)) {
+      logError(`ProcessManager: Convex binary not found at ${binaryPath}`);
+      this.emit('convex-error', {
+        type: 'binary-missing',
+        message: 'Convex backend binary not found. Please ensure it is properly installed.'
+      });
+      return false;
+    }
+    
+    // Ensure data directory exists
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+      logInfo(`ProcessManager: Created Convex data directory at ${dataDir}`);
+    }
+    
+    // Check port availability
+    const backendAvailable = await this.isPortAvailable(convexConfig.backendPort);
+    const actionsAvailable = await this.isPortAvailable(convexConfig.actionsPort);
+    
+    if (!backendAvailable || !actionsAvailable) {
+      logError(`ProcessManager: Convex ports ${convexConfig.backendPort}/${convexConfig.actionsPort} are already in use`);
+      this.emit('convex-error', {
+        type: 'port-conflict',
+        message: `Ports ${convexConfig.backendPort} or ${convexConfig.actionsPort} are already in use. Please close any other Convex instances.`
+      });
+      return false;
+    }
+    
+    // Prepare process configuration
+    const config: ManagedProcess = {
+      name: 'convex-backend',
+      process: null,
+      command: binaryPath,
+      args: [
+        '--port', convexConfig.backendPort.toString(),
+        '--site-proxy-port', convexConfig.actionsPort.toString()
+      ],
+      restartAttempts: 0,
+      maxRestarts: 3,
+      restartDelay: 2000,
+      isRunning: false,
+      shouldRestart: true,
+      lastStartTime: Date.now()
+    };
+    
+    this.processes.set('convex-backend', config);
+    
+    // Store Convex info for IPC handlers
+    this.convexInfo = {
+      backendUrl: convexConfig.backendUrl,
+      actionsUrl: convexConfig.actionsUrl,
+      dataDir
+    };
+    
+    return this.startConvexProcess('convex-backend');
+  }
+  
+  /**
+   * Start a Convex process with specific handling
+   */
+  private startConvexProcess(processName: string): boolean {
+    const config = this.processes.get(processName);
+    if (!config) return false;
+    
+    if (config.isRunning) {
+      logInfo(`ProcessManager: ${processName} is already running`);
+      return true;
+    }
+    
+    try {
+      const dataDir = pathConfig.getConvexDataDir();
+      
+      config.process = spawn(config.command, config.args, {
+        cwd: dataDir, // Set working directory for database storage
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: {
+          ...process.env,
+          // Add any Convex-specific environment variables here
+        }
+      });
+      
+      config.isRunning = true;
+      config.lastStartTime = Date.now();
+      
+      // Handle stdout for readiness detection
+      config.process.stdout?.on('data', (data: Buffer) => {
+        const output = data.toString();
+        logDebug(`${processName} stdout: ${output}`);
+        
+        // Check for readiness signal
+        if (output.includes('backend listening on') && output.includes(':52100')) {
+          logInfo(`ProcessManager: ${processName} is ready`);
+          this.emit('convex-ready', this.convexInfo);
+        }
+      });
+      
+      // Handle stderr
+      config.process.stderr?.on('data', (data: Buffer) => {
+        const error = data.toString();
+        logError(`${processName} stderr: ${error}`);
+      });
+      
+      // Handle process exit
+      config.process.on('exit', (code: number | null, signal: string | null) => {
+        logInfo(`ProcessManager: ${processName} exited with code ${code}, signal ${signal}`);
+        config.isRunning = false;
+        config.process = null;
+        
+        if (!this.isShuttingDown && config.shouldRestart) {
+          this.handleProcessRestart(processName);
+        }
+      });
+      
+      // Handle process errors
+      config.process.on('error', (error: Error) => {
+        logError(`ProcessManager: ${processName} error: ${error.message}`);
+        config.isRunning = false;
+        config.process = null;
+        
+        this.emit('convex-error', {
+          type: 'process-error',
+          message: error.message
+        });
+        
+        if (!this.isShuttingDown && config.shouldRestart) {
+          this.handleProcessRestart(processName);
+        }
+      });
+      
+      // Start heartbeat monitoring
+      this.startHeartbeatMonitoring(processName);
+      
+      logInfo(`ProcessManager: ${processName} started with PID ${config.process.pid}`);
+      return true;
+      
+    } catch (error: any) {
+      logError(`ProcessManager: Failed to start ${processName}: ${error.message}`);
+      config.isRunning = false;
+      config.process = null;
+      
+      this.emit('convex-error', {
+        type: 'start-failed',
+        message: error.message
+      });
+      
+      return false;
+    }
+  }
+  
+  /**
+   * Stop the Convex backend
+   */
+  stopConvexBackend(): void {
+    logInfo('ProcessManager: Stopping Convex backend...');
+    this.stopProcess('convex-backend');
+    this.convexInfo = null;
+  }
+  
+  /**
+   * Get Convex backend status and info
+   */
+  getConvexInfo(): { running: boolean; backendUrl?: string; actionsUrl?: string; dataDir?: string } {
+    const config = this.processes.get('convex-backend');
+    const running = config?.isRunning || false;
+    
+    if (running && this.convexInfo) {
+      return {
+        running,
+        ...this.convexInfo
+      };
+    }
+    
+    return { running };
+  }
+  
+  /**
+   * Check if Convex backend is running
+   */
+  isConvexBackendRunning(): boolean {
+    const config = this.processes.get('convex-backend');
+    return config?.isRunning || false;
   }
 
   /**

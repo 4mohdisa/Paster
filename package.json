@@ -1,19 +1,25 @@
 {
-  "name": "aipaste-monorepo",
+  "name": "aipaste",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently --names \"electron,main-window\" --prefix-colors \"blue,green\" \"pnpm --filter @aipaste/electron dev\" \"pnpm --filter @aipaste/main-window dev\"",
+    "dev": "concurrently --names \"convex,electron,main-window\" --prefix-colors \"yellow,blue,green\" \"pnpm convex:dev\" \"pnpm --filter @aipaste/electron dev\" \"pnpm --filter @aipaste/main-window dev\"",
+    "dev:no-convex": "concurrently --names \"electron,main-window\" --prefix-colors \"blue,green\" \"pnpm --filter @aipaste/electron dev\" \"pnpm --filter @aipaste/main-window dev\"",
     "dev:electron": "pnpm --filter @aipaste/electron dev",
     "dev:main-window": "pnpm --filter @aipaste/main-window dev",
     "build": "pnpm --filter @aipaste/main-window build && pnpm --filter @aipaste/electron build",
     "dist": "pnpm build && pnpm --filter @aipaste/electron dist",
     "lint": "pnpm run --parallel lint",
     "clean": "pnpm run --parallel clean",
-    "typecheck": "pnpm run --parallel typecheck"
+    "typecheck": "pnpm run --parallel typecheck",
+    "convex:dev": "npx convex dev --url http://127.0.0.1:52100 --admin-key 0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd",
+    "convex:dev:cloud": "npx convex dev",
+    "convex:push": "npx convex deploy --url http://127.0.0.1:52100 --admin-key 0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd",
+    "convex:push:cloud": "npx convex deploy"
   },
   "devDependencies": {
     "concurrently": "^9.2.0",
+    "convex": "^1.25.4",
     "nodemon": "^3.1.10",
     "typescript": "^5.9.0"
   },

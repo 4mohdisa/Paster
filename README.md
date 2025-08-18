@@ -24,6 +24,7 @@ A macOS desktop application that provides intelligent clipboard management with 
    ```bash
    pnpm install
    ```
+   > Note: This will automatically download the Convex backend binary (~100MB) during postinstall.
 
 3. **Build the Swift CLI** (Required first!)
    ```bash
@@ -36,6 +37,12 @@ A macOS desktop application that provides intelligent clipboard management with 
    ```bash
    pnpm dev
    ```
+   
+   This command automatically:
+   - Starts Convex local backend (port 52100)
+   - Deploys Convex functions for development
+   - Starts Electron app with Swift CLI integration
+   - Launches Next.js development server
 
 The application will open in Electron. On first launch, it will guide you through:
 - Granting Accessibility permissions (required for keyboard shortcuts)
@@ -146,9 +153,10 @@ The history panel shows:
 - Use **HTML** when pasting into rich text editors
 
 **Managing History**:
-- History persists between app restarts
+- History persists in local Convex database (SQLite)
 - Items show timestamps for easy identification
 - Most recent items appear at the top
+- Data stored locally at ~/Library/Application Support/@aipaste/electron/
 
 **Troubleshooting**:
 - If shortcuts stop working, check accessibility permissions
@@ -175,6 +183,11 @@ The history panel shows:
 │   ├── ui/           # UI components (@aipaste/ui)
 │   └── config-typescript/ # Shared TypeScript configs
 ├── agent-docs/       # Development documentation and reports
+├── convex/           # Convex backend functions and schema
+│   ├── _generated/   # Auto-generated Convex types
+│   ├── clipboardHistory.ts # Clipboard history functions
+│   ├── settings.ts   # Settings management functions
+│   └── schema.ts     # Database schema definition
 └── pnpm-workspace.yaml # Workspace configuration
 ```
 
@@ -288,12 +301,11 @@ pnpm clean
 - **Frontend**: Next.js 15, React 19, TypeScript
 - **Desktop**: Electron 36
 - **Native Backend**: Swift CLI with macOS system integration
-- **Database**: PostgreSQL with Drizzle ORM
-- **Cache**: Redis
+- **Database**: Convex (local SQLite backend)
 - **Authentication**: Clerk / Better Auth (configurable)
 - **AI**: Anthropic Claude / OpenAI (configurable)
 - **UI**: Tailwind CSS, shadcn/ui, Radix UI
-- **State**: Zustand
+- **State**: Zustand + Convex React hooks
 - **Build**: tsup, electron-builder, Swift Package Manager
 
 ## ✨ Key Features
@@ -316,10 +328,12 @@ pnpm clean
 - **HTML**: Full HTML table markup
 
 ### 💾 Clipboard History
-- **Persistent Storage**: All formatted items saved locally
+- **Persistent Storage**: All formatted items saved in local Convex database
+- **Real-time Updates**: Live synchronization with Convex subscriptions
 - **Click to Copy**: Easy access to previous clipboard items
 - **Auto-formatting**: Historical items show in your preferred format
 - **Metadata Tracking**: Timestamps and format information
+- **Offline-first**: Works completely offline with local database
 
 ### ⚙️ Settings & Configuration
 - **Format Preferences**: Set your default table format
@@ -382,34 +396,40 @@ NEXT_PUBLIC_API_URL=your-api-url
 ## 🚀 Available Scripts
 
 ### Development
-- `pnpm run dev` - Start the full Electron app with Swift CLI
-- `pnpm run next:dev` - Start only the Next.js development server
+- `pnpm dev` - Start full app with Convex, Electron, and Next.js
+- `pnpm dev:no-convex` - Start without Convex (for testing)
+- `pnpm dev:electron` - Start only Electron
+- `pnpm dev:main-window` - Start only Next.js
 
 ### Swift CLI
-- `pnpm run swift:build` - Build the Swift CLI component
-- `pnpm run swift:test` - Test Swift CLI functionality (if available)
+- `pnpm swift:build` - Build the Swift CLI component
+- `pnpm swift:test` - Test Swift CLI functionality (if available)
+
+### Convex Backend
+- `pnpm convex:dev` - Start local Convex backend (auto-runs with `pnpm dev`)
+- `pnpm convex:push` - Deploy functions to local backend
+- `pnpm convex:dev:cloud` - Use cloud Convex (if configured)
+- `pnpm convex:push:cloud` - Deploy to cloud Convex
 
 ### Building
-- `pnpm run build` - Build everything (Swift CLI + Electron + Next.js)
-- `pnpm run dist` - Build and package the complete application
-- `pnpm run electron:dist` - Create distribution packages
+- `pnpm build` - Build everything (Swift CLI + Electron + Next.js)
+- `pnpm dist` - Build and package the complete application
 
-### Database
-- `pnpm db:push` - Push database schema changes
-- `pnpm db:push --force` - Force push schema changes
-- `pnpm db:generate` - Generate database migrations
-- `pnpm db:migrate` - Run database migrations
-- `pnpm db:studio` - Open Drizzle Studio
+### Database (Convex)
+Convex functions are automatically deployed when running `pnpm dev`. The local database is stored at:
+- **macOS**: `~/Library/Application Support/@aipaste/electron/aipaste-convex-db/`
+- **Database**: SQLite file managed by Convex OSS backend
+- **Port**: 52100 (backend), 52101 (actions)
 
 ### Code Quality
-- `pnpm run lint` - Run ESLint
-- `pnpm run format` - Format code with Prettier
-- `pnpm run typecheck` - Run TypeScript type checking
+- `pnpm lint` - Run ESLint
+- `pnpm format` - Format code with Prettier
+- `pnpm typecheck` - Run TypeScript type checking
 
 ### Setup
-- `pnpm run setup` - Run automated setup script
-- `pnpm run setup:interactive` - Run interactive setup script
-- `pnpm run setup:validate` - Validate setup configuration
+- `pnpm setup` - Run automated setup script
+- `pnpm setup:interactive` - Run interactive setup script
+- `pnpm setup:validate` - Validate setup configuration
 
 ## 🧪 Testing the Application
 
@@ -434,27 +454,29 @@ echo -e "Name\tAge\nJohn\t30\nJane\t25" | ./.build/debug/AiPasteHelper format --
 
 ## 🗃️ Database Setup
 
-The application uses PostgreSQL as the primary database. When you run `pnpm run dev`, a PostgreSQL instance is automatically started within the Electron application.
+The application uses Convex OSS backend with a local SQLite database for persistent storage.
 
-### Database Commands
+### Convex Backend Features
+- **Local-first**: All data stored locally, no cloud dependency
+- **Real-time**: Live updates with Convex subscriptions
+- **Auto-restart**: Process manager ensures backend stays running
+- **Unique Ports**: Uses 52100-52101 to avoid conflicts
+- **Auto-deploy**: Functions automatically deployed in development
 
-```bash
-# Push schema changes (recommended for development)
-pnpm db:push --force
-
-# Generate migrations
-pnpm db:generate
-
-# Run migrations
-pnpm db:migrate
-
-# Open database studio
-pnpm db:studio
+### Database Location
+```
+~/Library/Application Support/@aipaste/electron/
+├── aipaste-convex-db/       # SQLite database
+├── convex-local-backend/    # Convex binary
+└── settings.json           # App settings
 ```
 
-## 🔌 Redis Integration
+## 🔌 Data Persistence
 
-The application includes Redis for caching and session management. Redis binaries are included in the `resources/binaries/redis/` directory for cross-platform compatibility.
+The application uses Convex for all data persistence needs:
+- **Clipboard History**: Stored in Convex with real-time sync
+- **Settings**: Managed through Convex functions
+- **No External Dependencies**: Everything runs locally
 
 ## 📱 Building for Production
 
@@ -512,9 +534,16 @@ This project is private and proprietary.
 
 ### Electron/Node Issues
 
-**Database connection issues**: Ensure PostgreSQL is running when you execute `pnpm db:push`. The easiest way is to have `pnpm run dev` running in another terminal.
+**Convex connection issues**: 
+- Check if Convex backend is running: Look for "Convex backend started" in logs
+- Verify ports 52100-52101 are available
+- Backend auto-restarts on crash (max 3 retries)
+- Database stored at `~/Library/Application Support/@aipaste/electron/aipaste-convex-db/`
 
-**Port conflicts**: If you encounter port conflicts, check that ports 3000 (Next.js) and 5434 (PostgreSQL) are available.
+**Port conflicts**: If you encounter port conflicts, check that these ports are available:
+- 3000 (Next.js)
+- 52100 (Convex backend)
+- 52101 (Convex actions)
 
 **Environment variables**: Double-check that your `.env` file is properly configured with the required variables.
 
@@ -534,11 +563,19 @@ This project is private and proprietary.
 │ • Permissions   │                │ • Permissions    │
 └─────────────────┘                └──────────────────┘
          │                                   │
+         │                                   │
          ▼                                   ▼
 ┌─────────────────┐                ┌──────────────────┐
 │   Next.js App   │                │  macOS System    │
 │   (Frontend)    │                │   Integration    │
 └─────────────────┘                └──────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Convex Backend │
+│  (Local SQLite) │
+│  Port: 52100    │
+└─────────────────┘
 ```
 
 ### Development Workflow

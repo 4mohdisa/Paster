@@ -2,6 +2,7 @@ import { logInfo } from "../logger";
 import { registerSwiftHandlers } from "./swift";
 import { registerProcessManagerHandlers } from "./process-manager";
 import { registerHistoryHandlers } from "./history";
+import { registerConvexHandlers } from "./convex";
 
 /**
  * Register IPC handlers needed by the main window app
@@ -17,6 +18,9 @@ export function registerAllHandlers(): void {
 	
 	// Register history handlers (for clipboard history)
 	registerHistoryHandlers();
+	
+	// Register Convex backend handlers
+	registerConvexHandlers();
 
 	logInfo("IPC handlers registered successfully");
 }

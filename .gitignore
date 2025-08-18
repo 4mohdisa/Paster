@@ -39,3 +39,7 @@ build
 neutral.config.json
 
 pglite
+
+# Convex binaries
+convex-local-backend
+electron/resources/bin/

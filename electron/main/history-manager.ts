@@ -1,8 +1,6 @@
-import { app } from 'electron';
-import * as fs from 'fs/promises';
-import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { logError, logInfo } from './logger';
+import { convexClient } from './convex-client';
 
 export interface HistoryItem {
   id: string;
@@ -18,35 +16,10 @@ export interface HistoryItem {
   };
 }
 
-interface HistoryStorage {
-  items: HistoryItem[];
-  maxItems: number;
-  version: string;
-}
-
 export class HistoryManager {
-  private historyFile: string;
   private maxItems: number = 50;
-  private cache: HistoryItem[] = [];
-  private initialized: boolean = false;
 
-  constructor() {
-    const userDataPath = app.getPath('userData');
-    this.historyFile = path.join(userDataPath, 'clipboard-history.json');
-    this.initialize();
-  }
-
-  private async initialize() {
-    try {
-      await this.loadFromFile();
-      this.initialized = true;
-      logInfo(`HistoryManager: Loaded ${this.cache.length} items from history`);
-    } catch (error) {
-      logError(`HistoryManager: Failed to initialize - ${error}`);
-      this.cache = [];
-      this.initialized = true;
-    }
-  }
+  constructor() {}
 
   async addItem(
     original: string,
@@ -54,135 +27,133 @@ export class HistoryManager {
     format: string,
     metadata?: any
   ): Promise<string> {
-    const item: HistoryItem = {
-      id: uuidv4(),
-      timestamp: new Date().toISOString(),
-      original,
-      formatted,
-      format,
-      source: 'clipboard',
-      metadata
-    };
+    const id = uuidv4();
 
-    // Add to beginning of array (most recent first)
-    this.cache.unshift(item);
-
-    // Trim to max items
-    if (this.cache.length > this.maxItems) {
-      this.cache = this.cache.slice(0, this.maxItems);
+    try {
+      await convexClient.addHistoryItem({
+        content: original,
+        formatted,
+        format
+      });
+      logInfo(`HistoryManager: Added item to Convex`);
+    } catch (error) {
+      logError(`HistoryManager: Failed to save to Convex - ${error}`);
     }
 
-    // Save to file
-    await this.saveToFile();
-
-    logInfo(`HistoryManager: Added item ${item.id} to history`);
-    return item.id;
+    return id;
   }
 
   async getLatest(): Promise<HistoryItem | null> {
-    if (!this.initialized) {
-      await this.initialize();
+    try {
+      const history = await convexClient.getHistory(1);
+      if (history && history.length > 0) {
+        const item = history[0];
+        return {
+          id: item._id || uuidv4(),
+          timestamp: new Date(item.timestamp).toISOString(),
+          original: item.content,
+          formatted: item.formatted,
+          format: item.format,
+          source: 'clipboard',
+          metadata: {}
+        };
+      }
+    } catch (error) {
+      logError(`HistoryManager: Failed to get latest - ${error}`);
     }
-    return this.cache.length > 0 ? this.cache[0] : null;
+    return null;
   }
 
   async getAll(limit?: number): Promise<HistoryItem[]> {
-    if (!this.initialized) {
-      await this.initialize();
+    try {
+      const history = await convexClient.getHistory(limit || this.maxItems);
+      if (history) {
+        return history.map(item => ({
+          id: item._id || uuidv4(),
+          timestamp: new Date(item.timestamp).toISOString(),
+          original: item.content,
+          formatted: item.formatted,
+          format: item.format,
+          source: 'clipboard' as const,
+          metadata: {}
+        }));
+      }
+    } catch (error) {
+      logError(`HistoryManager: Failed to get all - ${error}`);
     }
-    if (limit && limit > 0) {
-      return this.cache.slice(0, limit);
-    }
-    return this.cache;
+    return [];
   }
 
   async getById(id: string): Promise<HistoryItem | null> {
-    if (!this.initialized) {
-      await this.initialize();
+    try {
+      const history = await convexClient.getHistory(this.maxItems);
+      const item = history.find(h => h._id === id);
+      if (item) {
+        return {
+          id: item._id || id,
+          timestamp: new Date(item.timestamp).toISOString(),
+          original: item.content,
+          formatted: item.formatted,
+          format: item.format,
+          source: 'clipboard',
+          metadata: {}
+        };
+      }
+    } catch (error) {
+      logError(`HistoryManager: Failed to get by id - ${error}`);
     }
-    return this.cache.find(item => item.id === id) || null;
+    return null;
   }
 
   async getByIndex(index: number): Promise<HistoryItem | null> {
-    if (!this.initialized) {
-      await this.initialize();
-    }
-    if (index >= 0 && index < this.cache.length) {
-      return this.cache[index];
+    try {
+      const history = await convexClient.getHistory(index + 1);
+      if (history && history[index]) {
+        const item = history[index];
+        return {
+          id: item._id || uuidv4(),
+          timestamp: new Date(item.timestamp).toISOString(),
+          original: item.content,
+          formatted: item.formatted,
+          format: item.format,
+          source: 'clipboard',
+          metadata: {}
+        };
+      }
+    } catch (error) {
+      logError(`HistoryManager: Failed to get by index - ${error}`);
     }
     return null;
   }
 
   async clear(): Promise<void> {
-    this.cache = [];
-    await this.saveToFile();
-    logInfo('HistoryManager: Cleared all history');
+    try {
+      await convexClient.clearHistory();
+      logInfo('HistoryManager: Cleared all history in Convex');
+    } catch (error) {
+      logError(`HistoryManager: Failed to clear Convex history - ${error}`);
+    }
   }
 
   async removeItem(id: string): Promise<boolean> {
-    const index = this.cache.findIndex(item => item.id === id);
-    if (index !== -1) {
-      this.cache.splice(index, 1);
-      await this.saveToFile();
-      logInfo(`HistoryManager: Removed item ${id}`);
-      return true;
-    }
+    logInfo(`HistoryManager: Remove item not implemented for Convex yet`);
     return false;
   }
 
-  private async saveToFile(): Promise<void> {
+  async getCount(): Promise<number> {
     try {
-      const storage: HistoryStorage = {
-        items: this.cache,
-        maxItems: this.maxItems,
-        version: '1.0.0'
-      };
-
-      const dir = path.dirname(this.historyFile);
-      await fs.mkdir(dir, { recursive: true });
-      await fs.writeFile(
-        this.historyFile,
-        JSON.stringify(storage, null, 2),
-        'utf-8'
-      );
+      const history = await convexClient.getHistory(this.maxItems);
+      return history.length;
     } catch (error) {
-      logError(`HistoryManager: Failed to save history - ${error}`);
+      logError(`HistoryManager: Failed to get count - ${error}`);
+      return 0;
     }
   }
 
-  private async loadFromFile(): Promise<void> {
-    try {
-      const data = await fs.readFile(this.historyFile, 'utf-8');
-      const storage: HistoryStorage = JSON.parse(data);
-      
-      // Validate version and structure
-      if (storage.version === '1.0.0' && Array.isArray(storage.items)) {
-        this.cache = storage.items;
-        this.maxItems = storage.maxItems || 50;
-      } else {
-        // Invalid format, start fresh
-        this.cache = [];
-      }
-    } catch (error: any) {
-      if (error.code === 'ENOENT') {
-        // File doesn't exist yet, that's okay
-        this.cache = [];
-      } else {
-        throw error;
-      }
-    }
-  }
-
-  // Get count of items
-  getCount(): number {
-    return this.cache.length;
-  }
-
-  // Check if history has items
-  hasItems(): boolean {
-    return this.cache.length > 0;
+  async hasItems(): Promise<boolean> {
+    const count = await this.getCount();
+    return count > 0;
   }
 }
 
-// Singleton instance
 export const historyManager = new HistoryManager();

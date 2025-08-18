@@ -19,6 +19,14 @@ const electronAPI = {
 	stopShortcuts: () => ipcRenderer.invoke("process:stop-shortcuts"),
 	shortcutsStatus: () => ipcRenderer.invoke("process:shortcuts-status"),
 	
+	// Convex backend management
+	convex: {
+		getInfo: () => ipcRenderer.invoke("convex:get-info"),
+		start: () => ipcRenderer.invoke("convex:start"),
+		stop: () => ipcRenderer.invoke("convex:stop"),
+		restart: () => ipcRenderer.invoke("convex:restart"),
+	},
+	
 	// IPC renderer for events
 	ipcRenderer: {
 		on: (channel: string, listener: (event: any, ...args: any[]) => void) => {
@@ -29,7 +37,9 @@ const electronAPI = {
 				'history-item-added',
 				'history-cleared',
 				'history-copied',
-				'history-pasted'
+				'history-pasted',
+				'convex-ready',
+				'convex-error'
 			];
 			if (validChannels.includes(channel)) {
 				ipcRenderer.on(channel, listener);

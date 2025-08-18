@@ -73,6 +73,54 @@ export class PathConfig {
   isDevelopment(): boolean {
     return this.isDev;
   }
+  
+  /**
+   * Get the Convex backend binary path based on environment
+   */
+  getConvexBinaryPath(): string {
+    const platform = process.platform;
+    const arch = process.arch;
+    const binaryName = platform === 'win32' ? 'convex-local-backend.exe' : 'convex-local-backend';
+    
+    if (this.isDev) {
+      // In development, binary should be in electron/resources/bin/<platform>-<arch>/
+      return path.join(
+        __dirname,
+        '..',
+        '..',
+        'resources',
+        'bin',
+        `${platform}-${arch}`,
+        binaryName
+      );
+    }
+    
+    // In production, binary is bundled in resources
+    return path.join(process.resourcesPath, 'bin', `${platform}-${arch}`, binaryName);
+  }
+  
+  /**
+   * Get the Convex data directory path
+   * Uses unique subdirectory to avoid conflicts with other Convex installations
+   */
+  getConvexDataDir(): string {
+    return path.join(app.getPath('userData'), 'aipaste-convex-db');
+  }
+  
+  /**
+   * Get Convex backend configuration
+   * Using unique port range 52100-52101 to avoid conflicts
+   */
+  getConvexConfig(): { backendPort: number; actionsPort: number; backendUrl: string; actionsUrl: string } {
+    const backendPort = 52100;
+    const actionsPort = 52101;
+    return {
+      backendPort,
+      actionsPort,
+      backendUrl: `http://127.0.0.1:${backendPort}`,
+      actionsUrl: `http://127.0.0.1:${actionsPort}`
+    };
+  }
 }
 
 // Export singleton instance
