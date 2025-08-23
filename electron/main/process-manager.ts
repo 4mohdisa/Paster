@@ -4,6 +4,8 @@ import { EventEmitter } from 'events';
 import { pathConfig } from './config/paths';
 import { logError, logInfo, logDebug } from './logger';
 import { historyManager } from './history-manager';
+import { convexClient } from './convex-client';
+import { api } from '../../convex/_generated/api';
 import * as fs from 'fs';
 import * as net from 'net';
 
@@ -65,6 +67,48 @@ export class ProcessManager extends EventEmitter {
   /**
    * Start the clipboard monitor daemon
    */
+  /**
+   * Start Finder selection monitor process
+   */
+  async startFinderMonitor(): Promise<boolean> {
+    logInfo('ProcessManager: Starting Finder selection monitor');
+    
+    // Stop existing monitor if running
+    this.stopFinderMonitor();
+    
+    const config: ManagedProcess = {
+      name: 'finder-monitor',
+      process: null,
+      command: this.binaryPath,
+      args: ['finder-selection', '--monitor'],
+      restartAttempts: 0,
+      maxRestarts: 3,
+      restartDelay: 2000,
+      isRunning: false,
+      shouldRestart: true,
+      lastStartTime: Date.now()
+    };
+    
+    this.processes.set('finder-monitor', config);
+    return this.startProcess('finder-monitor');
+  }
+  
+  /**
+   * Stop Finder selection monitor
+   */
+  stopFinderMonitor(): void {
+    const config = this.processes.get('finder-monitor');
+    if (config) {
+      config.shouldRestart = false;
+      if (config.process) {
+        logInfo('ProcessManager: Stopping Finder monitor');
+        config.process.kill();
+        config.process = null;
+      }
+      this.processes.delete('finder-monitor');
+    }
+  }
+
   async startClipboardMonitor(): Promise<boolean> {
     logInfo('ProcessManager: Starting clipboard monitor...');
     
@@ -339,21 +383,109 @@ export class ProcessManager extends EventEmitter {
         timestamp: new Date().toISOString()
       });
     }
-    // Handle shortcut trigger - now paste from history
+    // Handle Finder selection changes
+    else if (response.event === 'finder-selection-changed') {
+      logInfo(`Finder selection changed`);
+      this.emit('finder-selection-changed', response.data || '');
+    }
+    // Handle shortcut trigger - check which shortcut was pressed
     else if (response.event === 'shortcut-triggered') {
-      logInfo(`Shortcut triggered - pasting from history`);
+      const keyData = response.data;
       
-      // Get latest item from history
-      const latestItem = await historyManager.getLatest();
-      if (latestItem) {
-        // Emit event with history item
-        this.emit('shortcut-triggered', {
-          message: 'Pasting from history',
-          historyItem: latestItem,
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        logInfo('No history items available to paste');
+      // Check if it's Cmd+Shift+K (keyCode 40 with Cmd+Shift modifiers)
+      // Modifiers: Cmd = 1048576, Shift = 131072, Cmd+Shift = 1179648
+      if (keyData && typeof keyData === 'string') {
+        try {
+          const parsed = JSON.parse(keyData);
+          const modifiers = parsed.modifiers || 0;
+          const keyCode = parsed.keyCode || 0;
+          
+          // Cmd+Shift+K: keyCode 40, modifiers 3 (Cmd=1, Shift=2, Cmd+Shift=3)
+          if (keyCode === 40 && modifiers === 3) {
+            logInfo('Cmd+Shift+K detected - triggering Kash conversion');
+            
+            // Get Finder selection and process with Kash
+            const { pythonBridge } = require('./python-bridge');
+            const { swiftBridge } = require('./swift-bridge');
+            
+            try {
+              // Get selected files from Finder
+              const selectionResult = await swiftBridge.execute(['finder-selection']);
+              
+              if (selectionResult.success && selectionResult.data) {
+                // Swift returns newline-separated paths, not JSON
+                const files = selectionResult.data.split('\n').filter(path => path.trim());
+                
+                if (files && files.length > 0) {
+                  logInfo(`Processing ${files.length} files with Kash`);
+                  
+                  // Process with Kash
+                  const processResult = await pythonBridge.processFiles(files, 'markdownify');
+                  
+                  // Save to Convex directly from backend if successful
+                  if (processResult.success) {
+                    try {
+                      const client = convexClient.getClient();
+                      await client.mutation(api.conversionHistory.addConversion, {
+                        originalPath: processResult.input_file || files[0] || '',
+                        originalName: processResult.input_file?.split('/').pop() || 'Unknown',
+                        convertedPath: processResult.output_file || '',
+                        convertedName: processResult.output_file?.split('/').pop() || 'Unknown',
+                        fromFormat: processResult.format?.input || 'unknown',
+                        toFormat: processResult.format?.output || 'markdown',
+                        fileSize: processResult.content_length,
+                        preview: processResult.content_preview?.substring(0, 200),
+                        success: true,
+                      });
+                      logInfo('✅ Conversion history saved to Convex from backend');
+                    } catch (error) {
+                      logError(`Failed to save to Convex: ${error}`);
+                    }
+                  }
+                  
+                  // Emit event for UI update
+                  this.emit('kash-conversion-complete', {
+                    files,
+                    result: processResult,
+                    timestamp: new Date().toISOString()
+                  });
+                  
+                  // Notify user via IPC
+                  const { BrowserWindow } = require('electron');
+                  const windows = BrowserWindow.getAllWindows();
+                  windows.forEach(window => {
+                    window.webContents.send('kash-conversion-complete', {
+                      files,
+                      result: processResult
+                    });
+                  });
+                } else {
+                  logInfo('No files selected in Finder for Kash conversion');
+                }
+              }
+            } catch (error) {
+              logError(`Kash conversion error: ${error}`);
+            }
+          } else {
+            // Original paste from history logic for Cmd+V
+            logInfo(`Shortcut triggered - pasting from history`);
+            
+            // Get latest item from history
+            const latestItem = await historyManager.getLatest();
+            if (latestItem) {
+              // Emit event with history item
+              this.emit('shortcut-triggered', {
+                message: 'Pasting from history',
+                historyItem: latestItem,
+                timestamp: new Date().toISOString()
+              });
+            } else {
+              logInfo('No history items available to paste');
+            }
+          }
+        } catch (e) {
+          logError(`Failed to parse shortcut data: ${e}`);
+        }
       }
     } else if (response.event === 'key-debug') {
       logDebug(`Key event: ${response.data}`);
@@ -628,6 +760,10 @@ export class ProcessManager extends EventEmitter {
         // Check for readiness signal
         if (output.includes('backend listening on') && output.includes(':52100')) {
           logInfo(`ProcessManager: ${processName} is ready`);
+          
+          // Initialize Convex client singleton for backend saving
+          convexClient.initialize('http://127.0.0.1:52100');
+          
           this.emit('convex-ready', this.convexInfo);
         }
       });

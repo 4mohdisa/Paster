@@ -14,6 +14,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as clipboardHistory from "../clipboardHistory.js";
+import type * as conversionHistory from "../conversionHistory.js";
 import type * as settings from "../settings.js";
 
 /**
@@ -26,6 +27,7 @@ import type * as settings from "../settings.js";
  */
 declare const fullApi: ApiFromModules<{
   clipboardHistory: typeof clipboardHistory;
+  conversionHistory: typeof conversionHistory;
   settings: typeof settings;
 }>;
 export declare const api: FilterApi<

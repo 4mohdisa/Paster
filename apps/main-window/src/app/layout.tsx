@@ -1,6 +1,6 @@
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { ConvexClientProvider } from '@/providers/convex-provider';
-import { Toaster } from '@aipaste/ui/components';
+import { Toaster } from '@aipaste/ui/components/sonner';
 import "@aipaste/ui/styles/globals.css";
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';

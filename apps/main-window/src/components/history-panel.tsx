@@ -1,7 +1,8 @@
 'use client';
 
 import { useClipboardHistory } from '@/hooks/use-clipboard-history';
-import { Button, ScrollArea } from '@aipaste/ui/components';
+import { Button } from '@aipaste/ui/components/button';
+import { ScrollArea } from '@aipaste/ui/components/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import { ClipboardPaste, Copy, FileText, Trash2 } from 'lucide-react';
 

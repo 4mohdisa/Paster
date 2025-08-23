@@ -3,6 +3,7 @@ import { registerSwiftHandlers } from "./swift";
 import { registerProcessManagerHandlers } from "./process-manager";
 import { registerHistoryHandlers } from "./history";
 import { registerConvexHandlers } from "./convex";
+import { registerKashHandlers } from "./kash";
 
 /**
  * Register IPC handlers needed by the main window app
@@ -21,6 +22,9 @@ export function registerAllHandlers(): void {
 	
 	// Register Convex backend handlers
 	registerConvexHandlers();
+	
+	// Register Kash integration handlers
+	registerKashHandlers();
 
 	logInfo("IPC handlers registered successfully");
 }

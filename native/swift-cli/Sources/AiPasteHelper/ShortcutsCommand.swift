@@ -62,12 +62,25 @@ class ShortcutHandler {
             }
         }
 
-        // Check if it's our target shortcut
+        // Check if it's our target shortcut (Cmd+V) or Kash shortcut (Cmd+Shift+K)
         let settings = SettingsManager.shared
+        
+        // Cmd+V for paste
         if keyCode == CGKeyCode(settings.shortcutKeyCode) && currentModifiers == settings.shortcutModifiers {
             // Execute paste command in background
             DispatchQueue.global(qos: .userInitiated).async {
-                self.executePasteCommand()
+                self.executePasteCommand(keyCode: Int(keyCode), modifiers: currentModifiers)
+            }
+
+            // Block the original event
+            return nil
+        }
+        
+        // Cmd+Shift+K for Kash conversion (keyCode 40, modifiers Cmd+Shift = 3)
+        if keyCode == 40 && commandPressed && shiftPressed && !optionPressed && !controlPressed {
+            // Execute Kash command in background
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.executePasteCommand(keyCode: 40, modifiers: currentModifiers)
             }
 
             // Block the original event
@@ -78,12 +91,20 @@ class ShortcutHandler {
         return Unmanaged.passRetained(event)
     }
 
-    private func executePasteCommand() {
-        // Simply emit event - Electron will handle pasting from history
+    private func executePasteCommand(keyCode: Int, modifiers: Int) {
+        // Send event with key information - Electron will handle the action
+        let keyInfo: [String: Any] = [
+            "keyCode": keyCode,
+            "modifiers": modifiers
+        ]
+        
+        let jsonData = try? JSONSerialization.data(withJSONObject: keyInfo)
+        let jsonString = jsonData != nil ? String(data: jsonData!, encoding: .utf8) : nil
+        
         let response = CLIResponse(
             success: true,
             message: "Shortcut triggered",
-            data: nil,
+            data: jsonString,
             event: "shortcut-triggered"
         )
         print(response.toJSON())

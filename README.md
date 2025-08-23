@@ -33,7 +33,13 @@ A macOS desktop application that provides intelligent clipboard management with 
    pnpm swift:build
    ```
 
-4. **Start the development server**
+4. **Build Kash Environment** (For document conversion features)
+   ```bash
+   pnpm build:kash
+   ```
+   > This creates a standalone Python environment with Kash framework for file conversion
+
+5. **Start the development server**
    ```bash
    pnpm dev
    ```

@@ -3,7 +3,9 @@
     "allow": [
       "Bash(swift build)",
       "Bash(find:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "mcp__deepwiki__ask_question",
+      "mcp__deepwiki__read_wiki_contents"
     ],
     "additionalDirectories": [
       "/Users/moinulmoin/Developer/clients/neutralbase/aipaste",

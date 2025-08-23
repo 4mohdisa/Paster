@@ -1,14 +1,15 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { MessageSquare, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@aipaste/ui"
+} from "@aipaste/ui/components/tooltip";
+import { MessageSquare, Settings } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
 
 const navigationItems = [
   {

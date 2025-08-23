@@ -36,6 +36,22 @@ export class SwiftBridge {
   }
 
   /**
+   * Get currently selected files in Finder
+   */
+  async getFinderSelection(): Promise<CLIResponse> {
+    try {
+      const result = await this.execute(['finder-selection']);
+      return result;
+    } catch (error) {
+      logError(`Failed to get Finder selection: ${error}`);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
    * Format table data with pipe delimiters
    */
   async formatTable(input: string, format: 'simple' | 'markdown' | 'html' = 'simple'): Promise<string> {

@@ -27,6 +27,15 @@ const electronAPI = {
 		restart: () => ipcRenderer.invoke("convex:restart"),
 	},
 	
+	// Kash integration
+	kash: {
+		processFiles: (request: any) => ipcRenderer.invoke('kash:process-files', request),
+		getFinderSelection: () => ipcRenderer.invoke('kash:get-finder-selection'),
+		startSelectionMonitor: () => ipcRenderer.invoke('kash:start-selection-monitor'),
+		stopSelectionMonitor: () => ipcRenderer.invoke('kash:stop-selection-monitor'),
+		checkDependencies: () => ipcRenderer.invoke('kash:check-dependencies'),
+	},
+	
 	// IPC renderer for events
 	ipcRenderer: {
 		on: (channel: string, listener: (event: any, ...args: any[]) => void) => {
@@ -39,7 +48,9 @@ const electronAPI = {
 				'history-copied',
 				'history-pasted',
 				'convex-ready',
-				'convex-error'
+				'convex-error',
+				'kash:selection-changed',
+				'kash-conversion-complete'  // Added for file conversion events
 			];
 			if (validChannels.includes(channel)) {
 				ipcRenderer.on(channel, listener);

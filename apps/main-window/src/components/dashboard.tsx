@@ -1,27 +1,18 @@
 "use client";
 
-import {
-  Alert,
-  AlertDescription,
-  Badge,
-  Button,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Sidebar,
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  Textarea
-} from "@aipaste/ui/components";
-import { CheckCircle, FileText, HelpCircle, Home, Info } from "lucide-react";
+import { Badge } from "@aipaste/ui/components/badge";
+import { Button } from "@aipaste/ui/components/button";
+
+import { Alert, AlertDescription } from "@aipaste/ui/components/alert";
+import { Label } from "@aipaste/ui/components/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@aipaste/ui/components/select";
+import { Sidebar, SidebarContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider } from "@aipaste/ui/components/sidebar";
+import { Textarea } from "@aipaste/ui/components/textarea";
+
+import { CheckCircle, FileText, FlaskConical, HelpCircle, Home, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { FileConversionPanel } from "./file-conversion-panel";
 import { HistoryPanel } from "./history-panel";
 
 interface SystemStatus {
@@ -110,6 +101,7 @@ export default function Dashboard() {
   const sidebarItems = [
     { id: "general", label: "General", icon: Home },
     { id: "history", label: "History", icon: FileText },
+    { id: "files", label: "Files", icon: FlaskConical },
     { id: "help", label: "Help", icon: HelpCircle }
   ];
 
@@ -263,6 +255,16 @@ export default function Dashboard() {
         <div className="h-full flex flex-col">
           <div className="px-8 py-6 overflow-y-auto">
             <HistoryPanel />
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSection === "files") {
+      return (
+        <div className="h-full flex flex-col">
+          <div className="px-8 py-6 overflow-y-auto">
+            <FileConversionPanel />
           </div>
         </div>
       );

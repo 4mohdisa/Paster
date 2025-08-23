@@ -13,6 +13,7 @@ struct AiPasteHelper: ParsableCommand {
             SettingsCommand.self,
             ShortcutsCommand.self,
             TriggerPasteCommand.self,
+            FinderSelectionCommand.self,
             TestCommand.self
         ]
     )
