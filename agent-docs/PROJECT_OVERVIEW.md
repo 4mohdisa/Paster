@@ -18,32 +18,211 @@ AiPaste is a **universal intelligent paste application** for macOS that transfor
 - 🎨 **Real-time Dashboard** - Beautiful UI with instant updates
 - 🚀 **Finder Integration** - Select files → Convert with one shortcut
 
-## How It Works
+## How It Actually Works - Technical Flow
 
-### Intelligent Paste Flow (Cmd+Shift+V)
+### Application Startup Sequence
 ```mermaid
-graph LR
-    A[Copy any content] --> B[Press Cmd+Shift+V]
-    B --> C[AI detects type]
-    C --> D[Apply smart formatting]
-    D --> E[Clean paste delivered]
+graph TD
+    A[User launches AiPaste] --> B[Electron main process starts]
+    B --> C[Initialize Convex local backend on port 52100]
+    B --> D[Start Next.js UI on port 3000]
+    B --> E[Launch Swift CLI processes]
+    E --> F[shortcuts daemon for EventTap]
+    E --> G[monitor daemon for clipboard]
+    F --> H[Ready: Listening for Cmd+Shift+V]
+    G --> I[Ready: Watching clipboard changes]
 ```
 
-### Document Conversion Flow (Cmd+Shift+K) 
-```mermaid
-graph LR
-    A[Select files in Finder] --> B[Press Cmd+Shift+K]
-    B --> C[Kash processes documents]
-    C --> D[Extract clean text/markdown]
-    D --> E[Ready to paste anywhere]
+### Core Data Flow - What Happens When You Copy & Paste
+
+#### 1. Clipboard Monitoring Flow
+```javascript
+// User copies data from Excel/Sheets
+NSPasteboard.changeCount++ 
+    ↓
+Swift monitor detects change (every 0.5s)
+    ↓
+Checks content type:
+  - HTML with <table>? → Parse as HTML table
+  - Contains tabs? → Parse as tab-delimited
+  - Plain text? → Pass through
+    ↓
+Formats using TableFormatter.swift
+    ↓
+Emits JSON event via stdout:
+{
+  "success": true,
+  "data": { 
+    "original": "Name\tAge", 
+    "formatted": "| Name | Age |"
+  },
+  "event": "clipboard-change"
+}
+    ↓
+swift-bridge.ts receives JSON
+    ↓
+IPC handler forwards to UI
+    ↓
+Convex saves to clipboard history
+    ↓
+UI updates in real-time via subscription
+```
+
+#### 2. Keyboard Shortcut Flow (Cmd+Shift+V)
+```javascript
+// User presses Cmd+Shift+V anywhere
+CGEventTap intercepts keypress
+    ↓
+ShortcutsCommand.swift handles event:
+  - Blocks original Cmd+V
+  - Emits shortcut-triggered event
+    ↓
+process-manager.ts receives event
+    ↓
+IPC triggers paste action:
+  1. Get last formatted item from Convex
+  2. Update system clipboard
+  3. Trigger programmatic Cmd+V
+    ↓
+Target app receives formatted paste
+```
+
+#### 3. Document Conversion Flow (Kash - Cmd+Shift+K)
+```javascript
+// User selects files in Finder
+FinderSelectionCommand monitors selection
+    ↓
+User presses Cmd+Shift+K
+    ↓
+Swift detects shortcut → emits event
+    ↓
+python-bridge.ts receives request
+    ↓
+Spawns Kash process:
+  python kash-ultimate-runner.py file.docx
+    ↓
+Kash extracts text/markdown
+    ↓
+Returns to Electron via stdout
+    ↓
+Saves to conversion history (Convex)
+    ↓
+Updates clipboard with result
+```
+
+### Component Responsibilities
+
+#### Swift CLI (`native/swift-cli/`)
+**What it does:**
+- Monitors clipboard via NSPasteboard.changeCount polling
+- Intercepts keyboard events via CGEventTap
+- Formats tables (HTML/tab-delimited → pipes/markdown)
+- Manages settings in ~/.aipaste/settings.json
+- Checks/requests system permissions
+
+**Key processes:**
+- `shortcuts` - Long-running EventTap daemon
+- `monitor` - Long-running clipboard watcher
+- `format` - One-shot formatting command
+- `paste` - Complete paste flow execution
+
+#### Electron Main Process (`electron/main/`)
+**What it does:**
+- Spawns and manages Swift CLI child processes
+- Handles IPC between renderer and native code
+- Manages Convex backend lifecycle
+- Bridges Swift CLI ↔ UI communication
+- Auto-restarts crashed processes (max 5 retries)
+
+**Key modules:**
+- `swift-bridge.ts` - Swift CLI communication
+- `process-manager.ts` - Process health monitoring
+- `convex-client.ts` - Database operations
+- `ipc-handlers/` - Message routing
+
+#### Next.js UI (`apps/main-window/`)
+**What it does:**
+- Displays clipboard history
+- Settings configuration UI
+- Onboarding/permissions flow
+- Real-time status monitoring
+- Click-to-copy from history
+
+**Data flow:**
+- Subscribes to Convex for real-time updates
+- Sends commands via IPC to main process
+- Updates instantly when clipboard changes
+
+#### Convex Backend (`convex/`)
+**What it does:**
+- Stores clipboard history persistently
+- Manages user settings
+- Provides real-time subscriptions
+- Runs locally on SQLite (no cloud)
+
+**Key functions:**
+- `clipboardHistory.add()` - Save new entry
+- `clipboardHistory.list()` - Get history
+- `settings.update()` - Persist preferences
+
+### Process Communication Architecture
+
+```
+┌──────────────────────────────────────────────────────┐
+│                    User Actions                       │
+└──────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌──────────────────────────────────────────────────────┐
+│                 macOS System Events                   │
+│         (Clipboard changes, Keyboard events)          │
+└──────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌──────────────────────────────────────────────────────┐
+│              Swift CLI Processes (JSON)               │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────────┐   │
+│  │ monitor  │  │shortcuts │  │ finder-selection  │   │
+│  └──────────┘  └──────────┘  └──────────────────┘   │
+└──────────────────────────────────────────────────────┘
+         │              │                │
+         └──────────────┴────────────────┘
+                        │
+                     stdout
+                        │
+                        ▼
+┌──────────────────────────────────────────────────────┐
+│           Electron Main Process (Node.js)             │
+│  ┌──────────────┐  ┌────────────┐  ┌─────────────┐  │
+│  │ SwiftBridge  │  │ ProcessMgr │  │ IPC Handlers│  │
+│  └──────────────┘  └────────────┘  └─────────────┘  │
+└──────────────────────────────────────────────────────┘
+                           │
+                      IPC Bridge
+                           │
+                           ▼
+┌──────────────────────────────────────────────────────┐
+│              Renderer Process (Next.js)               │
+│  ┌───────────┐  ┌──────────┐  ┌──────────────────┐  │
+│  │ Dashboard │  │ Settings │  │ History Panel     │  │
+│  └───────────┘  └──────────┘  └──────────────────┘  │
+└──────────────────────────────────────────────────────┘
+                           │
+                    Convex Client
+                           │
+                           ▼
+┌──────────────────────────────────────────────────────┐
+│         Convex Backend (Local SQLite DB)              │
+│              Port 52100 - Real-time sync              │
+└──────────────────────────────────────────────────────┘
 ```
 
 ### The Magic Behind It
-1. **Copy anything** - Spreadsheets, documents, code, messy text
-2. **Hit the shortcut** - Cmd+Shift+V for paste, Cmd+Shift+K for files
-3. **AI processes** - Detects content type and applies best formatting
-4. **Clean output** - Perfect markdown, tables, or plain text
-5. **Instant paste** - Formatted content appears where you need it
+1. **Always running** - Swift daemons monitor continuously
+2. **Instant detection** - EventTap intercepts before other apps
+3. **Smart formatting** - Detects table type automatically
+4. **Zero latency** - Local processing, no network calls
+5. **Real-time sync** - Convex subscriptions update UI instantly
 
 ## What Can AiPaste Handle?
 
