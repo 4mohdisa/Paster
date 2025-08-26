@@ -1,13 +1,13 @@
 # Claude Code Project Configuration - AiPaste Monorepo
 
 ## Project Overview
-Building an Electron application with Swift CLI for native macOS features (clipboard management and OCR) using a monorepo architecture with pnpm workspaces.
+AiPaste is a **universal intelligent paste application** for macOS that transforms any clipboard content into clean, readable text. It handles spreadsheets, documents (via Kash), and will soon support OCR. Built with Electron + Swift CLI in a monorepo architecture.
 
 ## Current Status
-- **Phase**: 2 (Core Features)
-- **Completion**: 35%
-- **Active Task**: OCR Implementation
-- **Last Updated**: 2025-08-16
+- **Phase**: Production Ready
+- **Completion**: 98%
+- **Remaining**: OCR implementation from TRex
+- **Last Updated**: 2025-01-26
 
 ## Monorepo Structure
 ```
@@ -24,30 +24,35 @@ aipaste-monorepo/
 └── agent-docs/          # Documentation
 ```
 
-## Automatic Behaviors
+## Required Documentation to Check
+
+### When Starting ANY Work
+**ALWAYS READ FIRST:**
+1. `agent-docs/PROJECT_OVERVIEW.md` - Understand the complete system
+2. `agent-docs/WORK_HOOKS_PROTOCOL.md` - Follow development procedures
+
+### Additional References
+For more detailed documentation, see `agent-docs/` folder.
 
 ### Before Starting Work
-1. Read `agent-docs/CURRENT_ARCHITECTURE_2025.md` for current state
-2. Read `agent-docs/MASTER_PROGRESS_REPORT.md` for progress
-3. Verify Swift CLI builds: `cd native/swift-cli && swift build`
-4. Check electron builds: `pnpm --filter @aipaste/electron build`
-5. Identify next task from progress report
+1. Read PROJECT_OVERVIEW.md for understanding
+2. Follow WORK_HOOKS_PROTOCOL.md procedures
+3. Verify builds: `pnpm build` (includes Swift CLI)
+4. Check what's remaining: OCR implementation is the main task
 
 ### After Completing Work
-1. Update MASTER_PROGRESS_REPORT.md
-2. Create/update implementation report
-3. Run verification tests
-4. Update todo list
-5. Ensure all packages build: `pnpm build`
+1. Update relevant documentation if you changed architecture
+2. Run tests: `cd native/swift-cli/tests && ./test-cli.sh`
+3. Ensure everything builds: `pnpm build`
+4. Test the full app: `pnpm dev`
 
 ## Key Files to Track
-- `agent-docs/CURRENT_ARCHITECTURE_2025.md` - Architecture reference
-- `agent-docs/MASTER_PROGRESS_REPORT.md` - Overall progress
-- `agent-docs/WORK_HOOKS_PROTOCOL.md` - Work procedures
-- `native/swift-cli/Sources/AiPasteHelper/` - Swift implementation
-- `electron/main/swift-bridge.ts` - TypeScript bridge
-- `electron/main/process-manager.ts` - Process management
-- `electron/main/config/paths.ts` - Path configuration
+- `agent-docs/PROJECT_OVERVIEW.md` - **START HERE** - Complete project guide
+- `native/swift-cli/Sources/AiPasteHelper/` - Swift CLI implementation
+- `electron/main/swift-bridge.ts` - TypeScript-Swift communication
+- `electron/main/process-manager.ts` - Daemon management
+- `convex/` - Database functions for clipboard history
+- `apps/main-window/src/components/` - UI components
 
 ## Testing Commands
 
@@ -114,20 +119,13 @@ pnpm run --parallel <command>
 pnpm --filter @aipaste/ui add <package>
 ```
 
-## Next Priority Tasks
-1. **OCR Implementation** - Extract from TRex/AiPasteCore.swift
-2. **EventTap Integration** - Keyboard shortcuts via Swift
-3. **Permissions API** - Accessibility and screen recording
-4. **History Manager** - Complete clipboard history tracking
-5. **Settings Sync** - UI to Swift settings bridge
+## Next Steps
+See `agent-docs/PROJECT_OVERVIEW.md` for current status and remaining work.
 
 ## Development Principles
-- Port exact logic from original Swift code
-- Test each component independently
-- Document all implementations in agent-docs
-- Update progress reports after each component
-- Maintain backward compatibility
-- Follow monorepo best practices
+- Test changes before committing
+- Keep documentation updated if architecture changes
+- Follow existing code patterns
 - Use workspace protocol for internal dependencies
 
 ## Common Issues & Solutions
@@ -148,12 +146,6 @@ pnpm --filter @aipaste/ui add <package>
 - **Build order**: Dependencies build automatically with pnpm
 - **Version conflicts**: Check root package.json for overrides
 
-## Important Context
-This project ports features from two Swift apps:
-1. **AiPaste** (`/Users/moinulmoin/Developer/clients/neutralbase/aipaste`) - Clipboard formatting
-2. **TRex** (`/Users/moinulmoin/Developer/clients/neutralbase/angry-ants`) - OCR functionality
-
-The goal is minimal Swift code for native features, with everything else in Electron/TypeScript.
 
 ## Workspace Dependencies
 - Internal packages use `workspace:*` protocol

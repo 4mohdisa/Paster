@@ -4,20 +4,19 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/ensure-kash-env.js && concurrently --names \"convex,electron,main-window\" --prefix-colors \"yellow,blue,green\" \"pnpm convex:dev\" \"pnpm --filter @aipaste/electron dev\" \"pnpm --filter @aipaste/main-window dev\"",
-    "dev:electron": "pnpm --filter @aipaste/electron dev",
-    "dev:main-window": "pnpm --filter @aipaste/main-window dev",
-    "build": "pnpm build:kash && pnpm --filter @aipaste/main-window build && pnpm --filter @aipaste/electron build",
+    "dev:fresh": "pnpm clean:all && pnpm dev",
+    "build": "pnpm build:kash && pnpm build:swift && pnpm --filter @aipaste/main-window build && pnpm --filter @aipaste/electron build",
     "build:kash": "uvx py-app-standalone --source-only --target electron/resources/kash-env --python-version 3.11 --force python-docx docx2txt markdownify",
+    "build:swift": "cd native/swift-cli && swift build -c release",
     "dist": "pnpm build && pnpm --filter @aipaste/electron dist",
+    "dist:prod": "pnpm build && pnpm --filter @aipaste/electron dist:prod",
+    "typecheck": "pnpm run --parallel typecheck",
     "lint": "pnpm run --parallel lint",
     "clean": "pnpm run --parallel clean",
-    "clean:fresh": "rm -rf node_modules apps/*/node_modules packages/*/node_modules electron/node_modules apps/*/.next packages/*/dist electron/dist pnpm-lock.yaml && pnpm install",
-    "dev:fresh": "pnpm clean:fresh && pnpm dev",
-    "typecheck": "pnpm run --parallel typecheck",
+    "clean:all": "rm -rf node_modules apps/*/node_modules packages/*/node_modules electron/node_modules apps/*/.next electron/dist electron/build pnpm-lock.yaml && pnpm install",
+    "clean:kash": "rm -rf electron/resources/kash-env",
     "convex:dev": "npx convex dev --url http://127.0.0.1:52100 --admin-key 0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd",
-    "convex:dev:cloud": "npx convex dev",
-    "convex:push": "npx convex deploy --url http://127.0.0.1:52100 --admin-key 0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd",
-    "convex:push:cloud": "npx convex deploy"
+    "convex:deploy": "npx convex deploy --url http://127.0.0.1:52100 --admin-key 0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd"
   },
   "devDependencies": {
     "concurrently": "^9.2.0",

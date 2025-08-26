@@ -2,17 +2,41 @@
 
 A macOS desktop application that provides intelligent clipboard management with table formatting, OCR capabilities, and keyboard shortcuts. Built as a monorepo with Electron, Next.js, and a native Swift CLI for macOS integration.
 
+## 📋 Table of Contents
+- [Quick Start](#-quick-start)
+- [Architecture Overview](#-architecture-overview) 
+- [Development Guide](#-development-guide)
+- [Available Commands](#available-commands)
+- [Troubleshooting](#troubleshooting)
+- [FAQ for Developers](#faq-for-developers)
+- [How to Use AiPaste](#-how-to-use-aipaste)
 
 ## 🚀 Quick Start
 
+### TL;DR for Experienced Developers
+```bash
+# Clone and setup
+git clone <repository-url> && cd electron-aipaste
+pnpm install
+
+# Build requirements
+cd native/swift-cli && swift build -c release && cd ../..
+pnpm build:kash
+
+# Start development
+pnpm dev
+```
+
 ### Prerequisites
 
-- **Node.js 18+** and pnpm
-- **Xcode** and Swift (for building the native CLI)
+- **Node.js 20+** (Required - v20.0.0 or higher)
+- **pnpm 9.15+** (Required package manager)
+- **Xcode Command Line Tools** (for Swift compilation)
 - **macOS** (required for native clipboard and permissions features)
-- Git
+- **Git**
+- **Python 3.11+** and **uvx** (REQUIRED for Kash document conversion)
 
-### Development Setup
+### Full Installation Guide
 
 1. **Clone the repository**
    ```bash
@@ -20,40 +44,410 @@ A macOS desktop application that provides intelligent clipboard management with 
    cd electron-aipaste
    ```
 
-2. **Install dependencies**
+2. **Ensure you have the correct Node version**
+   ```bash
+   node --version  # Should be v20.0.0 or higher
+   ```
+   If not, install Node 20+ using [nvm](https://github.com/nvm-sh/nvm) or [volta](https://volta.sh/):
+   ```bash
+   # Using nvm
+   nvm install 20
+   nvm use 20
+   
+   # Or using volta
+   volta install node@20
+   ```
+
+3. **Install pnpm if not already installed**
+   ```bash
+   npm install -g pnpm@9.15.0
+   ```
+
+4. **Install dependencies**
    ```bash
    pnpm install
    ```
    > Note: This will automatically download the Convex backend binary (~100MB) during postinstall.
 
-3. **Build the Swift CLI** (Required first!)
+5. **Build the Swift CLI** (Required first!)
    ```bash
-   pnpm --filter @aipaste/electron swift:build
-   # or from root:
-   pnpm swift:build
-   ```
-
-4. **Build Kash Environment** (For document conversion features)
-   ```bash
-   pnpm build:kash
-   ```
-   > This creates a standalone Python environment with Kash framework for file conversion
-
-5. **Start the development server**
-   ```bash
-   pnpm dev
+   cd native/swift-cli
+   swift build -c release
+   cd ../..
    ```
    
-   This command automatically:
-   - Starts Convex local backend (port 52100)
-   - Deploys Convex functions for development
-   - Starts Electron app with Swift CLI integration
-   - Launches Next.js development server
+   If you get Swift errors, ensure Xcode Command Line Tools are installed:
+   ```bash
+   xcode-select --install
+   ```
+
+6. **Build Kash Environment** (REQUIRED for document conversion)
+   ```bash
+   # Install uvx if not available
+   pip install --user pipx
+   pipx install uv
+   
+   # Build the Kash environment
+   pnpm build:kash
+   ```
+   > This creates a standalone Python environment with Kash framework for document conversion (Word, PDF, etc.)
+
+### Development
+
+**Start the development server**
+```bash
+pnpm dev
+```
+
+This command automatically:
+- Ensures Kash environment exists
+- Starts Convex local backend (port 52100)
+- Starts Electron app with Swift CLI integration
+- Launches Next.js development server (port 3000 or 3001 if busy)
 
 The application will open in Electron. On first launch, it will guide you through:
 - Granting Accessibility permissions (required for keyboard shortcuts)
 - Testing clipboard functionality
 - Configuring table formatting preferences
+
+## 🏗️ Architecture Overview
+
+### Technology Stack
+- **Electron 36** - Desktop application framework
+- **Next.js 15** (App Router) - UI framework with Turbopack
+- **Swift** - Native macOS functionality (clipboard, OCR, shortcuts)
+- **Convex** - Local backend for data persistence
+- **Kash** - Python-based document conversion framework
+- **TypeScript** - Primary language for Electron and UI
+- **pnpm Workspaces** - Monorepo management
+
+### How It Works
+1. **Swift CLI** handles all native macOS operations:
+   - Clipboard monitoring and formatting
+   - Keyboard shortcuts via EventTap
+   - OCR functionality
+   - System permissions
+
+2. **Electron Main Process** orchestrates:
+   - Swift CLI process management
+   - IPC communication between processes
+   - Convex backend lifecycle
+   - Window management
+
+3. **Next.js UI** provides:
+   - Settings and configuration
+   - Clipboard history view
+   - Onboarding flow
+   - Real-time updates via IPC
+
+4. **Kash Environment** enables:
+   - Word/PDF document conversion
+   - Advanced text processing
+   - Standalone Python runtime (no system Python needed)
+
+### Key Design Decisions
+- **Minimal Swift code** - Only for macOS-specific features
+- **TypeScript for business logic** - Easier to maintain and debug
+- **JSON-based IPC** - Type-safe communication between Swift and TypeScript
+- **Local Convex backend** - Privacy-first, no cloud dependency
+- **Monorepo structure** - Shared code and consistent tooling
+
+## 👨‍💻 Development Guide
+
+### Common Development Workflows
+
+#### Starting Fresh Development
+```bash
+# After cloning or switching branches
+pnpm install
+pnpm dev
+```
+
+#### After Pulling Changes
+```bash
+# If package.json changed
+pnpm install
+
+# If Swift code changed
+pnpm build:swift
+
+# Start development
+pnpm dev
+```
+
+#### Working on Specific Parts
+```bash
+# Just the UI (Next.js)
+cd apps/main-window && pnpm dev
+
+# Just the Electron backend
+cd electron && pnpm dev
+
+# Swift CLI development
+cd native/swift-cli
+swift build
+./.build/debug/AiPasteHelper test
+```
+
+#### Before Committing
+```bash
+# Check types
+pnpm typecheck
+
+# Check linting
+pnpm lint
+
+# Test full build
+pnpm build
+```
+
+### Project Conventions
+- **Package naming**: All packages use `@aipaste/*` namespace
+- **Dependencies**: Use `workspace:*` for internal packages
+- **Swift output**: Always return JSON for IPC communication
+- **Error handling**: Log to electron-log, show user-friendly messages
+- **File paths**: Use absolute paths in configs
+
+### Important File Locations
+
+#### Configuration
+- `electron/main/config/paths.ts` - All path configurations
+- `convex.json` - Convex backend config
+- `pnpm-workspace.yaml` - Monorepo workspace config
+
+#### Swift CLI
+- `native/swift-cli/Sources/AiPasteHelper/` - Swift source code
+- `native/swift-cli/.build/release/AiPasteHelper` - Built binary
+
+#### IPC Communication
+- `electron/main/ipc-handlers/` - Electron IPC handlers
+- `electron/main/swift-bridge.ts` - Swift process communication
+- `electron/preload/index.ts` - Preload API exposed to renderer
+
+#### UI Components
+- `apps/main-window/app/` - Next.js app router pages
+- `packages/ui/src/` - Shared UI components
+- `apps/main-window/components/` - App-specific components
+
+#### Logs & Data
+- `~/Library/Logs/@aipaste/electron/` - Application logs
+- `~/Library/Application Support/@aipaste/electron/` - User data
+- `./convex_local_backend.sqlite3` - Local Convex database
+
+### Debugging Tips
+
+#### View Logs
+```bash
+# Electron main process logs
+tail -f ~/Library/Logs/@aipaste/electron/main.log
+
+# Swift CLI output (in dev mode)
+# Look for "debug swift-cli" in terminal output
+
+# Convex backend logs
+# Look for "convex-backend" in terminal output
+```
+
+#### Test Swift CLI Directly
+```bash
+cd native/swift-cli
+
+# Test clipboard formatting
+echo -e "Name\tAge\nJohn\t30" | ./.build/release/AiPasteHelper format --stdin
+
+# Test settings
+./.build/release/AiPasteHelper settings get
+
+# Test permissions
+./.build/release/AiPasteHelper permissions check
+```
+
+#### Reset Everything
+```bash
+# Nuclear option - removes everything
+pnpm clean:all
+
+# Just reset Kash
+pnpm clean:kash && pnpm build:kash
+
+# Reset user data (while app is closed)
+rm -rf ~/Library/Application\ Support/@aipaste
+rm -rf ~/Library/Logs/@aipaste
+```
+
+### Troubleshooting
+
+#### Common Issues
+
+1. **"command not found: pnpm"**
+   ```bash
+   npm install -g pnpm@9.15.0
+   ```
+
+2. **"Node version requirement not satisfied"**
+   - Install Node 20+ (see Prerequisites above)
+
+3. **Swift build fails**
+   ```bash
+   # Ensure Xcode Command Line Tools are installed
+   xcode-select --install
+   
+   # Verify Swift is available
+   swift --version
+   ```
+
+4. **"Port 3000 is in use"**
+   - The app will automatically use port 3001
+   - Or kill the process using port 3000:
+   ```bash
+   lsof -ti:3000 | xargs kill -9
+   ```
+
+5. **Convex backend download fails**
+   - Delete the resources folder and reinstall:
+   ```bash
+   rm -rf electron/resources/bin
+   pnpm install
+   ```
+
+6. **"Cannot find module '@aipaste/...'"**
+   - This is a monorepo using pnpm workspaces. Ensure you run `pnpm install` from the root directory, not from subdirectories.
+
+7. **Build errors in development**
+   - Clean and rebuild:
+   ```bash
+   pnpm clean:fresh  # This removes all node_modules and reinstalls
+   pnpm dev
+   ```
+
+8. **Kash environment build fails**
+   - Ensure Python 3.11+ is installed: `python3 --version`
+   - Install pipx if missing: `pip3 install --user pipx`
+   - Install uv through pipx: `pipx install uv`
+   - Verify uvx is in PATH: `which uvx`
+   - If uvx not found, add to PATH: `export PATH="$HOME/.local/bin:$PATH"`
+   - Run build command: `pnpm build:kash`
+   - The build creates a ~200MB Python environment in `electron/resources/kash-env/`
+
+### Available Commands
+
+#### 🚀 Development
+```bash
+pnpm dev          # Start all services (Convex local, Electron, Next.js)
+pnpm dev:fresh    # Clean everything and start fresh development
+```
+
+#### 🔨 Building & Distribution
+```bash
+pnpm build        # Build everything (Kash, Swift, Next.js, Electron)
+pnpm build:kash   # Build Kash Python environment for document conversion
+pnpm build:swift  # Build Swift CLI in release mode
+pnpm dist         # Build and package Electron app for distribution
+pnpm dist:prod    # Build production Electron app (requires code signing)
+```
+
+#### ✅ Code Quality
+```bash
+pnpm typecheck    # Run TypeScript type checking on all packages
+pnpm lint         # Run linting on all packages
+```
+
+#### 🧹 Cleanup
+```bash
+pnpm clean        # Clean build artifacts in all packages
+pnpm clean:all    # Nuclear option - removes everything and reinstalls
+pnpm clean:kash   # Remove Kash Python environment only
+```
+
+#### 🗄️ Convex Backend (Local)
+```bash
+pnpm convex:dev    # Start local Convex backend (auto-started by pnpm dev)
+pnpm convex:deploy # Deploy functions to local Convex backend
+```
+
+### Command Usage Guide
+
+#### For Daily Development
+1. **First time setup**: Run installation steps above
+2. **Regular development**: `pnpm dev`
+3. **After pulling changes**: `pnpm install` then `pnpm dev`
+4. **Issues with deps**: `pnpm dev:fresh`
+
+#### For Building & Distribution
+1. **Test build locally**: `pnpm build`
+2. **Create distributable**: `pnpm dist`
+3. **Production release**: `pnpm dist:prod` (requires code signing)
+
+#### For Troubleshooting
+- **Type errors**: `pnpm typecheck`
+- **Dependency issues**: `pnpm clean:all`
+- **Kash issues**: `pnpm clean:kash && pnpm build:kash`
+- **Swift issues**: `pnpm build:swift`
+
+### Project Structure
+
+```
+electron-aipaste/
+├── apps/
+│   ├── main-window/      # Next.js 15 UI (@aipaste/main-window)
+│   └── menubar/          # Future menubar app
+├── electron/             # Electron backend (@aipaste/electron)
+│   ├── main/            # Main process code
+│   ├── preload/         # Preload scripts
+│   └── resources/       # Binaries and assets
+├── native/
+│   └── swift-cli/       # Swift CLI (@aipaste/swift-cli)
+├── packages/
+│   ├── ui/              # Shared UI components (@aipaste/ui)
+│   └── config-typescript/ # TypeScript configs
+├── convex/              # Convex backend functions
+└── agent-docs/          # Documentation
+```
+
+## FAQ for Developers
+
+### Why Swift + Electron instead of pure Electron?
+macOS requires native code for:
+- Accessibility permissions (keyboard shortcuts)
+- EventTap API (global hotkeys)
+- Proper clipboard monitoring
+- OCR with Vision framework
+
+### Why Kash/Python for document conversion?
+- Best-in-class libraries for Word/PDF processing
+- Standalone environment (no Python installation needed)
+- Consistent conversion across machines
+
+### Why local Convex instead of cloud?
+- Privacy-first approach
+- No internet required
+- Full control over user data
+- Faster response times
+
+### How does IPC work between Swift and Electron?
+1. Electron spawns Swift CLI as child process
+2. Communication via stdin/stdout with JSON messages
+3. TypeScript interfaces ensure type safety
+4. All Swift commands return `{ success: boolean, data?: any, error?: string }`
+
+### Can I run this without building everything?
+No, you need:
+- Swift CLI for clipboard operations (required)
+- Kash environment for document conversion (required)
+- Convex backend for data persistence (auto-starts)
+
+### Where should I add new features?
+- **Native macOS feature** → `native/swift-cli/Sources/`
+- **UI/UX changes** → `apps/main-window/app/`
+- **Business logic** → `electron/main/`
+- **Data models** → `convex/schema.ts`
+- **Shared UI components** → `packages/ui/src/`
+
+### How do I test in production mode?
+```bash
+pnpm dist        # Creates .app in electron/dist/mac-arm64/
+open electron/dist/mac-arm64/AiPaste.app
+```
 
 ## 📖 How to Use AiPaste
 
