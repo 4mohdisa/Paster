@@ -42,11 +42,11 @@ async function downloadFile(url, dest) {
 
 async function extractArchive(archivePath, destDir) {
   const ext = path.extname(archivePath);
-  
+
   if (!fs.existsSync(destDir)) {
     fs.mkdirSync(destDir, { recursive: true });
   }
-  
+
   if (ext === '.zip') {
     // Use unzip for .zip files
     execSync(`unzip -o "${archivePath}" -d "${destDir}"`, { stdio: 'inherit' });
@@ -62,21 +62,33 @@ async function main() {
   const platform = process.platform;
   const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
   const platformKey = `${platform}-${arch}`;
-  
+
   const binaryName = BINARY_MAP[platformKey];
   if (!binaryName) {
     console.error(`Unsupported platform: ${platformKey}`);
     process.exit(1);
   }
-  
-  console.log(`Downloading Convex backend for ${platformKey}...`);
-  
+
   // Determine paths
   const resourcesDir = path.join(__dirname, '..', 'resources');
   const binDir = path.join(resourcesDir, 'bin', platformKey);
+  const finalBinaryPath = path.join(binDir, 'convex-local-backend');
+
+  // Check if the binary already exists
+  if (fs.existsSync(finalBinaryPath)) {
+    console.log(`✅ Convex backend already exists at ${finalBinaryPath}. Skipping download.`);
+    // Ensure it's executable, just in case permissions were lost
+    if (process.platform !== 'win32') {
+        fs.chmodSync(finalBinaryPath, '755');
+    }
+    return; // Exit successfully
+  }
+
+  console.log(`Downloading Convex backend for ${platformKey}...`);
+
   const tempDir = path.join(resourcesDir, 'temp');
   const archivePath = path.join(tempDir, binaryName);
-  
+
   // Create directories
   if (!fs.existsSync(binDir)) {
     fs.mkdirSync(binDir, { recursive: true });
@@ -84,22 +96,33 @@ async function main() {
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
   }
-  
+
   // Build download URL
   let downloadUrl;
   if (CONVEX_VERSION === 'latest') {
     // For latest, we need to fetch the latest release info first
     console.log('Fetching latest release info...');
     const latestUrl = 'https://api.github.com/repos/get-convex/convex-backend/releases/latest';
-    
+
     const releaseInfo = await new Promise((resolve, reject) => {
       https.get(latestUrl, { headers: { 'User-Agent': 'electron-aipaste' } }, (res) => {
+        if (res.statusCode !== 200) {
+          let errorData = '';
+          res.on('data', chunk => errorData += chunk);
+          res.on('end', () => {
+            console.error(`GitHub API responded with status ${res.statusCode}:`);
+            console.error(errorData);
+            reject(new Error(`GitHub API request failed with status ${res.statusCode}.`));
+          });
+          return;
+        }
+
         let data = '';
         res.on('data', chunk => data += chunk);
         res.on('end', () => resolve(JSON.parse(data)));
       }).on('error', reject);
     });
-    
+
     const asset = releaseInfo.assets.find(a => a.name === binaryName);
     if (!asset) {
       console.error(`Binary ${binaryName} not found in latest release`);
@@ -109,17 +132,17 @@ async function main() {
   } else {
     downloadUrl = `${BASE_URL}/v${CONVEX_VERSION}/${binaryName}`;
   }
-  
+
   console.log(`Downloading from: ${downloadUrl}`);
-  
+
   // Download the archive
   await downloadFile(downloadUrl, archivePath);
   console.log('Download complete.');
-  
+
   // Extract the archive
   console.log('Extracting archive...');
   await extractArchive(archivePath, binDir);
-  
+
   // Make binary executable (Unix-like systems)
   if (platform !== 'win32') {
     const binaryPath = path.join(binDir, 'convex-local-backend');
@@ -128,10 +151,10 @@ async function main() {
       console.log(`Made ${binaryPath} executable`);
     }
   }
-  
+
   // Clean up temp files
   fs.rmSync(tempDir, { recursive: true, force: true });
-  
+
   console.log(`✅ Convex backend binary installed to ${binDir}`);
 }
 

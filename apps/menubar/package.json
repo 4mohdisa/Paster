@@ -1,68 +1,33 @@
 {
   "name": "@aipaste/menubar",
-  "version": "0.0.1",
   "private": true,
-  "main": "build/main/index.js",
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "dev": "npm-run-all --parallel vite:dev electron:dev",
-    "vite:dev": "vite",
-    "vite:build": "vite build",
-    "electron:build": "tsup",
-    "electron:build_watch": "tsup --watch",
-    "electron:dev": "npm-run-all --parallel electron:build_watch electron:watch",
-    "electron:watch": "cross-env NODE_ENV='development' nodemon",
-    "build": "run-s vite:build electron:build",
-    "dist": "run-s build 'electron:dist'",
-    "electron:dist": "electron-builder --dir",
-    "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit",
-    "clean": "rm -rf build dist out"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@aipaste/ui": "workspace:*",
-    "clsx": "^2.1.1",
-    "electron-log": "^5.0.0",
-    "electron-updater": "^6.3.20",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "sonner": "^1.7.3",
-    "tailwind-merge": "^2.6.0",
-    "uuid": "^11.0.5"
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwindcss": "^4.1.7"
   },
   "devDependencies": {
-    "@aipaste/typescript-config": "workspace:*",
-    "@electron-toolkit/preload": "^3.0.2",
-    "@electron-toolkit/utils": "^4.0.0",
-    "@types/node": "^22.13.5",
-    "@types/react": "^19.1.0",
-    "@types/react-dom": "^19.1.0",
-    "@vitejs/plugin-react": "^4.3.0",
-    "autoprefixer": "^10.4.20",
-    "cross-env": "^7.0.3",
-    "electron": "^36.2.1",
-    "electron-builder": "^26.0.0",
-    "nodemon": "^3.1.10",
-    "npm-run-all": "^4.1.5",
-    "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.0",
-    "tsup": "^8.3.5",
-    "typescript": "^5.9.0",
-    "vite": "^6.0.0"
-  },
-  "build": {
-    "appId": "com.aipaste.menubar",
-    "productName": "AiPaste Menubar",
-    "directories": {
-      "buildResources": "build",
-      "output": "dist"
-    },
-    "files": [
-      "build/**/*",
-      "dist/**/*"
-    ],
-    "mac": {
-      "category": "public.app-category.productivity",
-      "type": "distribution"
-    }
+    "@eslint/js": "^9.33.0",
+    "@tailwindcss/vite": "^4.1.12",
+    "@types/node": "^22.15.18",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react-swc": "^4.0.0",
+    "eslint": "^9.33.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.3.0",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.39.1",
+    "vite": "^7.1.2"
   }
 }

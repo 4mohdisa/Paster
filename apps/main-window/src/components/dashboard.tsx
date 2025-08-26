@@ -11,7 +11,7 @@ import { Textarea } from "@aipaste/ui/components/textarea";
 
 import { CheckCircle, FileText, FlaskConical, HelpCircle, Home, Info } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@aipaste/ui/components/sonner";
 import { FileConversionPanel } from "./file-conversion-panel";
 import { HistoryPanel } from "./history-panel";
 

@@ -1,10 +1,10 @@
-import { electronApp, is, optimizer } from '@electron-toolkit/utils';
-import { app, BrowserWindow, shell } from 'electron';
-import { getPort } from 'get-port-please';
-import { startServer } from 'next/dist/server/lib/start-server';
-import { join } from 'node:path';
+import { electronApp, optimizer } from '@electron-toolkit/utils';
+import { app, BrowserWindow } from 'electron';
 import { registerAllHandlers } from './ipc-handlers';
-import { logInfo, logError } from './logger';
+import { logError, logInfo } from './logger';
+import { MainWindow } from './main-window';
+import { MenubarWindow } from './menubar-window';
+import { TrayManager } from './tray-manager';
 
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
@@ -13,59 +13,59 @@ if (!gotTheLock) {
   process.exit(0);
 }
 
-let mainWindow: BrowserWindow | null = null;
+// Window and tray instances
+const mainWindow = new MainWindow();
+const menubarWindow = new MenubarWindow();
+const trayManager = new TrayManager();
 
-// Start Next.js server in production
-const startNextJSServer = async () => {
-  const nextJSPort = await getPort({ portRange: [30011, 50000] });
-  const webDir = join(app.getAppPath(), 'app/main-window');
+// Track if app is quitting (used to determine window close behavior)
+let isAppQuitting = false;
 
-  await startServer({
-    dir: webDir,
-    isDev: false,
-    hostname: 'localhost',
-    port: nextJSPort,
-    customServer: true,
-    allowRetry: false,
-    keepAliveTimeout: 5000,
-    minimalMode: true,
+// Export for other modules if needed
+export { isAppQuitting };
+
+// Set up tray event handlers
+function setupTrayEvents(): void {
+  trayManager.on('show-main-window', () => {
+    mainWindow.show();
   });
 
-  logInfo(`Next.js server started on port: ${nextJSPort}`);
-  return nextJSPort;
-};
-
-// Create main window
-async function createMainWindow(): Promise<void> {
-  const nextJSPort = is.dev ? 3000 : await startNextJSServer();
-
-  mainWindow = new BrowserWindow({
-    width: 900,
-    height: 850,
-    show: false,
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
-      nodeIntegration: false,
-      contextIsolation: true,
-    },
+  trayManager.on('toggle-menubar', async (bounds) => {
+    await menubarWindow.toggle(bounds);
   });
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow?.show();
+  trayManager.on('show-settings', () => {
+    mainWindow.show();
+    mainWindow.send('navigate', '/settings');
   });
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url);
-    return { action: 'deny' };
+  trayManager.on('show-history', () => {
+    mainWindow.show();
+    mainWindow.send('navigate', '/history');
   });
 
-  const url = is.dev
-    ? 'http://localhost:3000'
-    : `http://localhost:${nextJSPort}`;
+  trayManager.on('show-about', () => {
+    mainWindow.show();
+    mainWindow.send('navigate', '/about');
+  });
 
-  mainWindow.loadURL(url);
+  trayManager.on('quick-paste', (options) => {
+    // Handle quick paste from tray
+    logInfo(`Quick paste requested with format: ${options.format}`);
+    // TODO: Implement quick paste logic
+  });
+
+  trayManager.on('paste-clip', (clip) => {
+    // Handle pasting a specific clip from history
+    logInfo(`Paste clip requested: ${clip.id}`);
+    // TODO: Implement paste clip logic
+  });
+
+  trayManager.on('quit-app', () => {
+    isAppQuitting = true;
+    mainWindow.setHideOnClose(false);
+    app.quit();
+  });
 }
 
 app.whenReady().then(async () => {
@@ -78,7 +78,17 @@ app.whenReady().then(async () => {
   // Register IPC handlers for process, history, and swift
   registerAllHandlers();
 
-  await createMainWindow();
+  // Initialize tray
+  trayManager.initialize();
+  setupTrayEvents();
+
+  // Create main window (but don't show it immediately if we have tray)
+  await mainWindow.create();
+
+  // Only show main window on first launch or if tray is not supported
+  if (!trayManager.isInitialized()) {
+    mainWindow.show();
+  }
 
   // Start the daemons after window is created
   const { processManager } = await import('./process-manager');
@@ -105,9 +115,7 @@ app.whenReady().then(async () => {
       }, 100);
 
       // Notify UI
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('shortcut-triggered', data);
-      }
+      mainWindow.send('shortcut-triggered', data);
     }
   });
 
@@ -123,21 +131,19 @@ app.whenReady().then(async () => {
   // Listen for Convex events
   processManager.on('convex-ready', async (info) => {
     logInfo(`Convex backend ready at ${info.backendUrl}`);
-    
+
     // Initialize Convex client for backend use
     const { convexClient } = await import('./convex-client');
     convexClient.initialize(info.backendUrl);
-    
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('convex-ready', info);
-    }
+
+    mainWindow.send('convex-ready', info);
+    menubarWindow.send('convex-ready', info);
   });
 
   processManager.on('convex-error', (error) => {
     logError(`Convex backend error: ${error.message}`);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('convex-error', error);
-    }
+    mainWindow.send('convex-error', error);
+    menubarWindow.send('convex-error', error);
   });
 
   // Check permissions and start daemons
@@ -152,16 +158,24 @@ app.whenReady().then(async () => {
   }
 
   app.on('activate', () => {
+    // On macOS, re-create windows when dock icon is clicked
     if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow();
+      mainWindow.create();
+    } else {
+      mainWindow.show();
     }
   });
 });
 
 app.on('window-all-closed', () => {
+  // On macOS, keep app running in tray even when all windows are closed
   if (process.platform !== 'darwin') {
-    app.quit();
+    // On Windows/Linux, check if we have tray
+    if (!trayManager.isInitialized()) {
+      app.quit();
+    }
   }
+  // On macOS, app stays in dock/tray
 });
 
 // Handle process termination signals for proper cleanup
@@ -175,7 +189,15 @@ process.on('SIGTERM', () => {
   app.quit();
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
   logInfo('App is quitting, cleaning up processes...');
-  // Process manager will handle cleanup in its shutdown method
+  isAppQuitting = true;
+  mainWindow.setHideOnClose(false);
+
+  // Clean up tray
+  trayManager.destroy();
+
+  // Explicitly shut down the process manager
+  const { processManager } = await import('./process-manager');
+  processManager.shutdown();
 });
