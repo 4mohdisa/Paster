@@ -82,8 +82,9 @@ export class MainWindow {
   private setupWindowEvents(): void {
     if (!this.window) return;
 
+    // Don't auto-show on ready - we want tray-first experience
     this.window.on('ready-to-show', () => {
-      this.show();
+      logInfo('Main window ready but not showing (tray-first mode)');
     });
 
     this.window.webContents.setWindowOpenHandler((details) => {

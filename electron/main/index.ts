@@ -75,20 +75,17 @@ app.whenReady().then(async () => {
     optimizer.watchWindowShortcuts(window);
   });
 
-  // Register IPC handlers for process, history, and swift
-  registerAllHandlers();
-
   // Initialize tray
   trayManager.initialize();
   setupTrayEvents();
 
-  // Create main window (but don't show it immediately if we have tray)
+  // Create main window but keep it hidden (tray-first experience)
   await mainWindow.create();
-
-  // Only show main window on first launch or if tray is not supported
-  if (!trayManager.isInitialized()) {
-    mainWindow.show();
-  }
+  
+  // Register ALL IPC handlers including menubar handlers
+  registerAllHandlers(mainWindow, menubarWindow);
+  
+  // Don't show main window on startup - user must click Dashboard from tray
 
   // Start the daemons after window is created
   const { processManager } = await import('./process-manager');

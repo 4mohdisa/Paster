@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/ensure-kash-env.js && concurrently --names \"convex,electron,main-window\" --prefix-colors \"yellow,blue,green\" \"pnpm convex:dev\" \"pnpm --filter @aipaste/electron dev\" \"pnpm --filter @aipaste/main-window dev\"",
+    "dev": "node scripts/ensure-kash-env.js && concurrently --names \"convex,electron,main-window,menubar\" --prefix-colors \"yellow,blue,green,magenta\" \"pnpm convex:dev\" \"pnpm --filter @aipaste/electron dev\" \"pnpm --filter @aipaste/main-window dev\" \"pnpm --filter @aipaste/menubar dev\"",
     "dev:fresh": "pnpm clean:all && pnpm dev",
-    "build": "pnpm build:kash && pnpm build:swift && pnpm --filter @aipaste/main-window build && pnpm --filter @aipaste/electron build",
+    "build": "pnpm build:kash && pnpm build:swift && pnpm --filter @aipaste/main-window build && pnpm --filter @aipaste/menubar build && pnpm --filter @aipaste/electron build",
     "build:kash": "uvx py-app-standalone --source-only --target electron/resources/kash-env --python-version 3.11 --force python-docx docx2txt markdownify",
     "build:swift": "cd native/swift-cli && swift build -c release",
     "dist": "pnpm build && pnpm --filter @aipaste/electron dist",

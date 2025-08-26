@@ -27,8 +27,8 @@ export class MenubarWindow {
       }
 
       const windowOptions: Electron.BrowserWindowConstructorOptions = {
-        width: 380,
-        height: 480,
+        width: 200,
+        height: 90,
         show: false,
         frame: false,
         resizable: false,
