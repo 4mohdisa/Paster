@@ -4,11 +4,15 @@ import { app } from 'electron';
 import { EventEmitter } from 'events';
 import { logInfo, logError } from './logger';
 import fs from 'fs';
+import { KashInstaller } from './kash-installer';
 
 export interface PythonProcessResult {
   success: boolean;
   data?: any;
   error?: string;
+  needsInstallation?: boolean;
+  requiredAction?: string;
+  missingAction?: string;
 }
 
 export interface KashFileAction {
@@ -19,6 +23,7 @@ export interface KashFileAction {
 }
 
 export class PythonBridge extends EventEmitter {
+  private kashPath: string = '';
   private pythonPath: string = '';
   private scriptPath: string = '';
   private isReady: boolean = false;
@@ -26,29 +31,29 @@ export class PythonBridge extends EventEmitter {
   constructor() {
     super();
 
-    // Setup paths for standalone Python environment
-    this.setupPythonPaths();
-    this.checkPython();
+    // Setup paths for standalone Kash environment
+    this.setupKashPaths();
+    this.checkKash();
   }
 
-  private setupPythonPaths(): void {
-    // Path to kash-env directory
+  private setupKashPaths(): void {
+    // First check for lazy-loaded Kash environment in user's home
+    const installer = new KashInstaller();
+    const userKashPath = installer.getKashPath();
+    const userPythonPath = installer.getPythonPath();
+    
+    // Then check for build-time environment (for development)
     const kashEnvPath = app.isPackaged
       ? path.join(process.resourcesPath, 'kash-env')
       : path.join(__dirname, '..', '..', 'resources', 'kash-env');
 
-    // Try to find Python executable in standalone environment
-    const possiblePythonPaths = [
-      path.join(kashEnvPath, 'bin', 'python3'),
-      path.join(kashEnvPath, 'bin', 'python'),
-      // macOS/Linux with version specifier - only scan if directory exists
-      ...(fs.existsSync(kashEnvPath)
-        ? fs.readdirSync(kashEnvPath).filter(dir => dir.startsWith('cpython-')).map(dir =>
-            path.join(kashEnvPath, dir, 'bin', 'python3')
-          )
-        : []),
-      // Windows
-      path.join(kashEnvPath, 'Scripts', 'python.exe'),
+    // Try to find Kash executable - prioritize user-installed over build-time
+    const possibleKashPaths = [
+      // User-installed Kash (from py-app-standalone)
+      userKashPath,
+      // Build-time Kash (if any)
+      path.join(kashEnvPath, 'bin', 'kash'),
+      path.join(kashEnvPath, 'Scripts', 'kash.exe'),
     ].filter(p => {
       try {
         return fs.existsSync(p);
@@ -57,14 +62,17 @@ export class PythonBridge extends EventEmitter {
       }
     });
 
-    if (possiblePythonPaths.length > 0) {
-      this.pythonPath = possiblePythonPaths[0];
-      logInfo(`Using standalone Python: ${this.pythonPath}`);
+    if (possibleKashPaths.length > 0) {
+      this.kashPath = possibleKashPaths[0];
+      logInfo(`Using standalone Kash: ${this.kashPath}`);
     } else {
-      // No fallback - standalone Python is required
-      this.pythonPath = '';
-      logError('Standalone Python environment not found. Run "pnpm build:kash" to set it up.');
+      // No Kash found - will need lazy installation
+      this.kashPath = '';
+      logInfo('Kash not found. Will prompt for installation when needed.');
     }
+
+    // Also keep Python path for fallback (if needed)
+    this.pythonPath = fs.existsSync(userPythonPath) ? userPythonPath : '';
 
     // Path to our ultimate Kash runner with FileStore
     this.scriptPath = app.isPackaged
@@ -83,37 +91,49 @@ export class PythonBridge extends EventEmitter {
     }
   }
 
-  private async checkPython(): Promise<void> {
-    if (!this.pythonPath) {
+  private async checkKash(): Promise<void> {
+    if (!this.kashPath) {
       this.isReady = false;
-      logInfo('bt Run "pnpm build:kash" to enable document conversion.');
+      logInfo('Kash not available. User will be prompted to install on first use.');
       return;
     }
 
-    return new Promise((resolve, reject) => {
-      const checkProcess = spawn(this.pythonPath, ['--version']);
-
-      checkProcess.on('close', (code) => {
-        if (code === 0) {
-          this.isReady = true;
-          logInfo('Standalone Python is available');
-          resolve();
-        } else {
-          logError('Standalone Python not working properly');
-          reject(new Error('Standalone Python environment issue'));
-        }
-      });
-
-      checkProcess.on('error', (err) => {
-        logError(`Standalone Python check failed: ${err}`);
-        reject(err);
-      });
+    return new Promise((resolve) => {
+      // For macOS, check if Kash executable exists
+      if (this.kashPath && fs.existsSync(this.kashPath)) {
+        this.isReady = true;
+        logInfo('Kash is available');
+        resolve();
+      } else {
+        this.isReady = false;
+        logInfo('Kash not installed');
+        resolve(); // Don't reject, just mark as not ready
+      }
     });
   }
 
   async processFile(filePath: string, action: string = 'markdownify'): Promise<PythonProcessResult> {
+    // Check if Kash is installed
+    const installer = new KashInstaller();
+    const isInstalled = await installer.isKashInstalled();
+    
+    if (!isInstalled) {
+      return {
+        success: false,
+        needsInstallation: true,
+        requiredAction: action,
+        error: 'Document processing features not installed'
+      };
+    }
+    
+    // Re-setup paths if needed (in case Kash was just installed)
+    if (!this.kashPath || !fs.existsSync(this.kashPath)) {
+      this.setupKashPaths();
+      await this.checkKash();
+    }
+    
     if (!this.isReady) {
-      await this.checkPython();
+      await this.checkKash();
     }
     
     // Debug: Check which version of the script we're running
@@ -143,7 +163,6 @@ export class PythonBridge extends EventEmitter {
       python.stderr.on('data', (data) => {
         stderr += data.toString();
         // Don't log all stderr as error - Python may use it for warnings
-        // logInfo(`Python stderr: ${data.toString()}`);  // Commenting out to reduce noise
       });
 
       python.on('close', (code) => {
@@ -178,7 +197,7 @@ export class PythonBridge extends EventEmitter {
 
   async processFiles(filePaths: string[], action: string = 'markdownify'): Promise<PythonProcessResult> {
     if (!this.isReady) {
-      await this.checkPython();
+      await this.checkKash();
     }
 
     if (filePaths.length === 0) {
@@ -208,7 +227,6 @@ export class PythonBridge extends EventEmitter {
       python.stderr.on('data', (data) => {
         stderr += data.toString();
         // Don't log all stderr as error - Python may use it for warnings
-        // logInfo(`Python stderr: ${data.toString()}`);  // Commenting out to reduce noise
       });
 
       python.on('close', (code) => {
@@ -291,29 +309,18 @@ export class PythonBridge extends EventEmitter {
     };
 
     try {
-      // Check Python
-      await this.checkPython();
-      deps.python = true;
+      // Check Python/Kash
+      await this.checkKash();
+      deps.python = this.pythonPath !== '';
+      deps.kash = this.kashPath !== '';
 
-      // Get Python version
-      const versionProcess = spawn(this.pythonPath, ['--version']);
-      versionProcess.stdout.on('data', (data) => {
-        deps.version = data.toString().trim();
-      });
-
-      // Check for Kash by trying to import it
-      const checkKash = spawn(this.pythonPath, ['-c', 'import kash; print("OK")']);
-
-      await new Promise<void>((resolve) => {
-        checkKash.on('close', (code) => {
-          deps.kash = code === 0;
-          resolve();
+      // Get Python version if available
+      if (this.pythonPath) {
+        const versionProcess = spawn(this.pythonPath, ['--version']);
+        versionProcess.stdout.on('data', (data) => {
+          deps.version = data.toString().trim();
         });
-        checkKash.on('error', () => {
-          deps.kash = false;
-          resolve();
-        });
-      });
+      }
 
       return deps;
     } catch (error) {

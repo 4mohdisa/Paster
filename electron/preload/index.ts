@@ -34,6 +34,14 @@ const electronAPI = {
 		startSelectionMonitor: () => ipcRenderer.invoke('kash:start-selection-monitor'),
 		stopSelectionMonitor: () => ipcRenderer.invoke('kash:stop-selection-monitor'),
 		checkDependencies: () => ipcRenderer.invoke('kash:check-dependencies'),
+		// Lazy-loading installation
+		checkInstallation: () => ipcRenderer.invoke('kash:check-installation'),
+		install: (options: any) => ipcRenderer.invoke('kash:install', options),
+		uninstall: () => ipcRenderer.invoke('kash:uninstall'),
+		onInstallProgress: (callback: (progress: any) => void) => {
+			ipcRenderer.on('kash:install-progress', (event, progress) => callback(progress));
+			return () => ipcRenderer.removeAllListeners('kash:install-progress');
+		},
 	},
 	
 	// IPC renderer for events

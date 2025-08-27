@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sidebar, SidebarContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider } from "@aipaste/ui/components/sidebar";
 import { Textarea } from "@aipaste/ui/components/textarea";
 
-import { CheckCircle, FileText, FlaskConical, HelpCircle, Home, Info } from "lucide-react";
+import { CheckCircle, FileText, FlaskConical, HelpCircle, Home, Info, RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "@aipaste/ui/components/sonner";
 import { FileConversionPanel } from "./file-conversion-panel";
@@ -362,6 +362,30 @@ export default function Dashboard() {
                       </ul>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Reset Settings */}
+              <div className="pt-8 border-t">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium mb-1">Reset Settings</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Run through the initial setup process again
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      // Clear onboarding flag
+                      localStorage.removeItem('aipaste-onboarding-complete');
+                      // Reload the page to trigger onboarding
+                      window.location.reload();
+                    }}
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Reset Onboarding
+                  </Button>
                 </div>
               </div>
             </div>

@@ -5,16 +5,7 @@ import { logInfo, logError } from '../logger';
 export function registerSwiftHandlers(): void {
   logInfo('Registering Swift bridge IPC handlers');
 
-  // Test Swift CLI
-  ipcMain.handle('swift:test', async () => {
-    try {
-      const result = await swiftBridge.test();
-      return { success: result };
-    } catch (error: any) {
-      logError(`Swift test error: ${error}`);
-      return { success: false, error: error.message };
-    }
-  });
+  // REMOVED: swift:test - Was only for development testing
 
   // Format table data
   ipcMain.handle('swift:format-table', async (_, input: string, format?: string) => {

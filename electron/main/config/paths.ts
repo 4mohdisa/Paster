@@ -84,10 +84,10 @@ export class PathConfig {
     
     if (this.isDev) {
       // In development, binary should be in electron/resources/bin/<platform>-<arch>/
+      // Use app.getAppPath() to get the correct base path
+      const appPath = app.getAppPath();
       return path.join(
-        __dirname,
-        '..',
-        '..',
+        appPath,
         'resources',
         'bin',
         `${platform}-${arch}`,

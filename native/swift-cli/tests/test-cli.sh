@@ -309,7 +309,7 @@ main() {
     # Run all test suites
     test_basic_cli
     test_settings
-    test_permissions
+    # test_permissions  # TODO: Function not defined yet
     test_formatting
     test_prefix
     test_edge_cases

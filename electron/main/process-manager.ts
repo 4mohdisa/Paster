@@ -419,8 +419,16 @@ export class ProcessManager extends EventEmitter {
                 if (files && files.length > 0) {
                   logInfo(`Processing ${files.length} files with Kash`);
                   
+                  // Determine action based on file extension
+                  const { getActionForFile } = require('./kash-actions-config');
+                  const firstFile = files[0];
+                  // For now, assume docx_to_markdown is enabled (it's installed by default)
+                  const enabledActions = ['docx_to_markdown', 'html_to_markdown'];
+                  const action = getActionForFile(firstFile, enabledActions) || 'markdownify';
+                  logInfo(`Using action '${action}' for file: ${firstFile}`);
+                  
                   // Process with Kash
-                  const processResult = await pythonBridge.processFiles(files, 'markdownify');
+                  const processResult = await pythonBridge.processFiles(files, action);
                   
                   // Save to Convex directly from backend if successful
                   if (processResult.success) {
@@ -666,6 +674,9 @@ export class ProcessManager extends EventEmitter {
     const convexConfig = pathConfig.getConvexConfig();
     const dataDir = pathConfig.getConvexDataDir();
     const binaryPath = pathConfig.getConvexBinaryPath();
+    
+    logInfo(`ProcessManager: Looking for Convex binary at: ${binaryPath}`);
+    logInfo(`ProcessManager: Binary exists: ${fs.existsSync(binaryPath)}`);
     
     // Check if binary exists
     if (!fs.existsSync(binaryPath)) {

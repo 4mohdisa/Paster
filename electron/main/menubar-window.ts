@@ -1,4 +1,4 @@
-import { BrowserWindow, screen, shell, Rectangle, ipcMain } from 'electron';
+import { BrowserWindow, screen, shell, Rectangle } from 'electron';
 import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
 import { logInfo, logError } from './logger';
@@ -142,23 +142,8 @@ export class MenubarWindow {
    * Set up IPC handlers for menubar-specific communication
    */
   private setupIpcHandlers(): void {
-    // Hide menubar window
-    ipcMain.handle('menubar:hide', () => {
-      this.hide();
-    });
-
-    // Get window visibility state
-    ipcMain.handle('menubar:is-visible', () => {
-      return this.isVisible;
-    });
-
-    // Resize window
-    ipcMain.handle('menubar:resize', (_, height: number) => {
-      if (this.window && !this.window.isDestroyed()) {
-        const [width] = this.window.getSize();
-        this.window.setSize(width, Math.min(Math.max(height, 200), 800));
-      }
-    });
+    // IPC handlers are now registered centrally in ipc-handlers/menubar.ts
+    // This method is kept for future menubar-specific setup if needed
   }
 
   /**

@@ -46,6 +46,25 @@ export interface IElectronAPI {
 			};
 			error?: string;
 		}>;
+		// Lazy-loading installation
+		checkInstallation: () => Promise<{
+			success: boolean;
+			installed: boolean;
+			actions: string[];
+		}>;
+		install: (options: {
+			actions: string[];
+		}) => Promise<{
+			success: boolean;
+			installedActions: string[];
+			error?: string;
+		}>;
+		uninstall: () => Promise<{ success: boolean }>;
+		onInstallProgress: (callback: (progress: {
+			percent: number;
+			message: string;
+			phase: 'preparing' | 'downloading' | 'installing' | 'configuring' | 'complete' | 'error';
+		}) => void) => () => void;
 	};
 
 	// IPC renderer - for direct communication

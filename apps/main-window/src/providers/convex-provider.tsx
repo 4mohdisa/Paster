@@ -16,23 +16,18 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
         const info = await window.electron.convex.getInfo();
         
         if (!info.data?.running) {
-          console.log('Convex backend not running, attempting to start...');
-          const startResult = await window.electron.convex.start();
+          // Backend should already be running (started by main process)
+          // If not, wait and retry
+          console.log('Waiting for Convex backend to be ready...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
           
-          if (!startResult.success) {
-            throw new Error('Failed to start Convex backend');
+          // Try getting info again
+          const retryInfo = await window.electron.convex.getInfo();
+          if (!retryInfo.data?.running || !retryInfo.data?.backendUrl) {
+            throw new Error('Convex backend is not running. Please restart the app.');
           }
           
-          // Wait a bit for backend to be ready
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          // Get info again
-          const newInfo = await window.electron.convex.getInfo();
-          if (!newInfo.data?.running || !newInfo.data?.backendUrl) {
-            throw new Error('Convex backend failed to start properly');
-          }
-          
-          const convexClient = new ConvexReactClient(newInfo.data.backendUrl);
+          const convexClient = new ConvexReactClient(retryInfo.data.backendUrl);
           setClient(convexClient);
           setIsReady(true);
         } else if (info.data?.backendUrl) {

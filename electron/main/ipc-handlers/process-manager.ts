@@ -89,23 +89,8 @@ export function registerProcessManagerHandlers(): void {
       };
     }
   });
-  // Get status of all managed processes
-  ipcMain.handle('process:status', async () => {
-    try {
-      const status = processManager.getStatus();
-      logInfo(`Process status requested: ${JSON.stringify(status)}`);
-      return {
-        success: true,
-        data: status
-      };
-    } catch (error: any) {
-      logError(`Failed to get process status: ${error.message}`);
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-  });
+  // REMOVED: Duplicate of process:shortcuts-status
+  // ipcMain.handle('process:status', ...) was here
 
   // Check if shortcuts daemon is running
   ipcMain.handle('process:shortcuts-status', async () => {

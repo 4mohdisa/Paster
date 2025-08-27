@@ -3,14 +3,15 @@
 import { Alert, AlertDescription } from '@aipaste/ui/components/alert';
 import { Button } from '@aipaste/ui/components/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@aipaste/ui/components/card';
-import { ArrowRight, CheckCircle, Clipboard, Keyboard, Loader2, Shield, XCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle, Clipboard, Download, FileText, Keyboard, Loader2, Shield, XCircle, Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from '@aipaste/ui/components/sonner';
 
 interface OnboardingProps {
   onComplete: () => void;
 }
 
-type OnboardingStep = 'welcome' | 'permissions' | 'test' | 'complete';
+type OnboardingStep = 'welcome' | 'permissions' | 'kash' | 'kash-actions' | 'test' | 'complete';
 
 export default function Onboarding({ onComplete }: OnboardingProps) {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
@@ -18,6 +19,9 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   const [isChecking, setIsChecking] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
   const [_daemonRunning, setDaemonRunning] = useState(false); // Prefixed with _ to indicate it's intentionally unused for now
+  const [kashInstalling, setKashInstalling] = useState(false);
+  const [selectedActions, setSelectedActions] = useState<string[]>(['docx_to_markdown']); // Default to DOCX, can add more later
+  const [actionsInstalling, setActionsInstalling] = useState(false);
 
   // Check permission status on mount
   useEffect(() => {
@@ -64,7 +68,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           setHasPermission(true);
           // Start the daemon after permission granted
           await startDaemon();
-          setCurrentStep('test');
+          setCurrentStep('kash');
         } else {
           // Start polling for permission
           pollForPermission();
@@ -84,7 +88,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         clearInterval(interval);
         setHasPermission(true);
         await startDaemon();
-        setCurrentStep('test');
+        setCurrentStep('kash');
       }
     }, 1000);
 
@@ -100,6 +104,27 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
       }
     } catch (error) {
       console.error('Failed to start daemon:', error);
+    }
+  };
+
+  const installKash = async () => {
+    setKashInstalling(true);
+    try {
+      // Install JUST the base Kash (no actions yet)
+      const result = await window.electron.kash.install({});
+
+      if (result.success) {
+        // Move to action selection step
+        setCurrentStep('kash-actions');
+      } else {
+        // Show error toast and stay on current step
+        toast.error(result.error || 'Installation failed. Please try again.');
+      }
+    } catch (error) {
+      // Show error toast and stay on current step
+      toast.error('Installation failed. Please try again.');
+    } finally {
+      setKashInstalling(false);
     }
   };
 
@@ -235,13 +260,123 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 </div>
               ) : (
                 <Button
-                  onClick={() => setCurrentStep('test')}
+                  onClick={() => setCurrentStep('kash')}
                   className="w-full"
                   size="lg"
                 >
                   Continue
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
+              )}
+            </CardContent>
+          </Card>
+        );
+
+      case 'kash':
+        return (
+          <Card className="w-full max-w-2xl">
+            <CardHeader>
+              <CardTitle className="text-2xl">Installing Kash Framework</CardTitle>
+              <CardDescription>
+                Setting up the document processing engine
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {!kashInstalling ? (
+                <>
+                  <div className="p-4 rounded-lg border bg-accent/30">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-5 h-5" />
+                      <span className="font-medium">Kash Document Processor</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Core framework for document conversion
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={installKash}
+                    className="w-full"
+                    size="lg"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Install
+                  </Button>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="text-center py-4">
+                    <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+                    <p className="text-sm text-muted-foreground">Installing...</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+
+      case 'kash-actions':
+        return (
+          <Card className="w-full max-w-2xl">
+            <CardHeader>
+              <CardTitle className="text-2xl">Installing Document Actions</CardTitle>
+              <CardDescription>
+                Setting up document conversion capabilities
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {!actionsInstalling ? (
+                <>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Installing the following actions:
+                    </p>
+                    <div className="p-3 rounded-lg border bg-accent/30">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Check className="w-4 h-4 text-green-500" />
+                        <span className="font-medium text-sm">DOCX to Markdown</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground ml-6">
+                        Convert Word documents to clean Markdown format
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={async () => {
+                      setActionsInstalling(true);
+
+                      try {
+                        // Install the action packages
+                        const result = await window.electron.ipcRenderer.invoke('kash:install-actions', {
+                          actions: selectedActions
+                        });
+
+                        if (result.success) {
+                          setCurrentStep('test');
+                        } else {
+                          toast.error(result.error || 'Failed to install action dependencies.');
+                        }
+                      } catch (error) {
+                        toast.error('Failed to install action dependencies.');
+                      } finally {
+                        setActionsInstalling(false);
+                      }
+                    }}
+                    className="w-full"
+                    size="lg"
+                  >
+                    Continue
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="text-center py-4">
+                    <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+                    <p className="text-sm text-muted-foreground">Installing...</p>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
