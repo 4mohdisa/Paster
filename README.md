@@ -186,7 +186,7 @@ cd electron && pnpm dev
 # Swift CLI development
 cd native/swift-cli
 swift build
-./.build/debug/AiPasteHelper test
+./.build/release/AiPasteHelper test
 ```
 
 #### Before Committing
@@ -609,26 +609,26 @@ cd native/swift-cli && swift build -c release
 
 ```bash
 # Test CLI functionality
-./.build/debug/AiPasteHelper test
+./.build/release/AiPasteHelper test
 
 # Format clipboard data (stdin)
-echo -e "Name\tAge\nJohn\t30" | ./.build/debug/AiPasteHelper format --stdin
+echo -e "Name\tAge\nJohn\t30" | ./.build/release/AiPasteHelper format --stdin
 
 # Monitor clipboard changes (long-running)
-./.build/debug/AiPasteHelper monitor
+./.build/release/AiPasteHelper monitor
 
 # Execute paste with formatting
-./.build/debug/AiPasteHelper paste
+./.build/release/AiPasteHelper paste
 
 # Manage settings
-./.build/debug/AiPasteHelper settings get
-./.build/debug/AiPasteHelper settings set prefix true
+./.build/release/AiPasteHelper settings get
+./.build/release/AiPasteHelper settings set prefix true
 
 # Check system permissions
-./.build/debug/AiPasteHelper permissions
+./.build/release/AiPasteHelper permissions
 
 # Start keyboard shortcut monitoring
-./.build/debug/AiPasteHelper shortcuts
+./.build/release/AiPasteHelper shortcuts
 ```
 
 ### Swift CLI Features
@@ -839,10 +839,10 @@ Convex functions are automatically deployed when running `pnpm dev`. The local d
 pnpm run swift:build
 
 # Test basic functionality
-./.build/debug/AiPasteHelper test
+./.build/release/AiPasteHelper test
 
 # Test table formatting
-echo -e "Name\tAge\nJohn\t30\nJane\t25" | ./.build/debug/AiPasteHelper format --stdin -o markdown
+echo -e "Name\tAge\nJohn\t30\nJane\t25" | ./.build/release/AiPasteHelper format --stdin -o markdown
 ```
 
 ### Full Integration Test
@@ -981,7 +981,7 @@ This project is private and proprietary.
 ### Development Workflow
 1. **Swift CLI Development**: Make changes in `swift-cli/Sources/AiPasteHelper/`
 2. **Build Swift**: Run `pnpm run swift:build`
-3. **Test CLI**: Use `./.build/debug/AiPasteHelper test`
+3. **Test CLI**: Use `./.build/release/AiPasteHelper test`
 4. **Electron Development**: Make changes in `src/main/` and `src/app/`
 5. **Integration Testing**: Run `pnpm run dev` to test full integration
 
