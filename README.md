@@ -919,8 +919,8 @@ This project is private and proprietary.
 
 **AiPasteHelper not found**:
 - Build the CLI first: `pnpm run swift:build`
-- Check binary exists: `ls -la swift-cli/.build/debug/AiPasteHelper`
-- Verify permissions: `chmod +x swift-cli/.build/debug/AiPasteHelper`
+- Check binary exists: `ls -la swift-cli/.build/release/AiPasteHelper`
+- Verify permissions: `chmod +x swift-cli/.build/release/AiPasteHelper`
 
 **Permission issues**:
 - Grant Accessibility permissions in System Preferences > Security & Privacy > Privacy > Accessibility

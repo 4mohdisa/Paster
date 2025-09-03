@@ -20,7 +20,7 @@ This document defines the mandatory pre-work and post-work procedures for mainta
 # Terminal 1: Verify Swift CLI
 cd swift-cli
 swift build
-./.build/debug/AiPasteHelper test
+./.build/release/AiPasteHelper test
 
 # Terminal 2: Verify Electron
 npm run build
@@ -134,8 +134,8 @@ TodoWrite({
 ### 4. Run Verification Suite
 ```bash
 # Swift CLI Tests
-./.build/debug/AiPasteHelper test
-echo -e "A\tB\nC\tD" | ./.build/debug/AiPasteHelper format --stdin
+./.build/release/AiPasteHelper test
+echo -e "A\tB\nC\tD" | ./.build/release/AiPasteHelper format --stdin
 
 # TypeScript Build
 npm run build

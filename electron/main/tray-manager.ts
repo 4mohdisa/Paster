@@ -18,18 +18,20 @@ export class TrayManager extends EventEmitter {
     try {
       // Create tray icon
       const iconPath = this.getIconPath();
-      const icon = nativeImage.createFromPath(iconPath);
-      
-      // For macOS, resize to 16x16 and set as template for dark/light mode support
-      const trayIcon = process.platform === 'darwin' 
-        ? icon.resize({ width: 16, height: 16 })
-        : icon.resize({ width: 32, height: 32 });
       
       if (process.platform === 'darwin') {
-        trayIcon.setTemplateImage(true);
+        // For macOS, use the template image directly without resizing
+        // The naming convention 'trayTemplate.png' tells Electron this is a template image
+        const icon = nativeImage.createFromPath(iconPath);
+        icon.setTemplateImage(true);
+        this.tray = new Tray(icon);
+      } else {
+        // For other platforms, resize appropriately
+        const icon = nativeImage.createFromPath(iconPath);
+        const trayIcon = icon.resize({ width: 32, height: 32 });
+        this.tray = new Tray(trayIcon);
       }
 
-      this.tray = new Tray(trayIcon);
       this.tray.setToolTip('AiPaste - Smart Clipboard Manager');
 
       // Build context menu
@@ -48,7 +50,17 @@ export class TrayManager extends EventEmitter {
    * Get the appropriate icon path based on platform
    */
   private getIconPath(): string {
-    // Check if we have a tray icon, otherwise use main icon
+    // For macOS, use template image (naming convention: trayTemplate.png)
+    // Electron automatically handles @2x for Retina displays
+    if (process.platform === 'darwin') {
+      const templatePath = join(__dirname, '../../resources/trayTemplate.png');
+      const fs = require('fs');
+      if (fs.existsSync(templatePath)) {
+        return templatePath;
+      }
+    }
+    
+    // For other platforms, use regular tray icon
     const trayIconPath = join(__dirname, '../../resources/tray-icon.png');
     const mainIconPath = join(__dirname, '../../resources/icon.png');
     
@@ -247,15 +259,16 @@ export class TrayManager extends EventEmitter {
   setImage(imagePath: string): void {
     if (this.tray) {
       const icon = nativeImage.createFromPath(imagePath);
-      const trayIcon = process.platform === 'darwin' 
-        ? icon.resize({ width: 16, height: 16 })
-        : icon.resize({ width: 32, height: 32 });
       
       if (process.platform === 'darwin') {
-        trayIcon.setTemplateImage(true);
+        // For macOS, don't resize template images
+        icon.setTemplateImage(true);
+        this.tray.setImage(icon);
+      } else {
+        // For other platforms, resize appropriately
+        const trayIcon = icon.resize({ width: 32, height: 32 });
+        this.tray.setImage(trayIcon);
       }
-      
-      this.tray.setImage(trayIcon);
     }
   }
 
