@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently --names \"convex,electron,main-window,menubar\" --prefix-colors \"yellow,blue,green,magenta\" \"pnpm convex:dev\" \"pnpm --filter @aipaste/electron dev\" \"pnpm --filter @aipaste/main-window dev\" \"pnpm --filter @aipaste/menubar dev\"",
-    "dev:fresh": "pnpm clean:all && pnpm dev",
+    "postinstall": "pnpm --filter @aipaste/electron convex:download",
+    "dev": "concurrently --names \"electron,main-window,menubar\" --prefix-colors \"blue,green,magenta\" \"pnpm --filter @aipaste/electron dev\" \"pnpm --filter @aipaste/main-window dev\" \"pnpm --filter @aipaste/menubar dev\"",
+    "dev:fresh": "pnpm fresh && pnpm dev",
     "build": "pnpm embed:uv && pnpm build:swift && pnpm --filter @aipaste/main-window build && pnpm --filter @aipaste/menubar build && pnpm --filter @aipaste/electron build",
     "embed:uv": "node scripts/embed-uv.js",
     "build:swift": "cd native/swift-cli && swift build -c release",
@@ -15,6 +16,7 @@
     "clean": "pnpm run --parallel clean",
     "clean:all": "rm -rf node_modules apps/*/node_modules packages/*/node_modules electron/node_modules apps/*/.next electron/dist electron/build pnpm-lock.yaml && pnpm install",
     "clean:kash": "rm -rf electron/resources/kash-env",
+    "fresh": "node scripts/fresh.js",
     "convex:dev": "source .env.local && npx convex dev --url http://127.0.0.1:52100 --admin-key $CONVEX_ADMIN_KEY",
     "convex:deploy": "source .env.local && npx convex deploy --url http://127.0.0.1:52100 --admin-key $CONVEX_ADMIN_KEY"
   },

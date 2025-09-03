@@ -12,8 +12,9 @@ const Home = () => {
     // Check if onboarding has been completed
     const checkOnboardingStatus = async () => {
       try {
-        // Check if user has completed onboarding
-        const onboardingComplete = localStorage.getItem('aipaste-onboarding-complete');
+        // Check if user has completed onboarding (from file-based settings)
+        const onboardingResult = await window.electron.ipcRenderer.invoke('settings:get-onboarding-status');
+        const onboardingComplete = onboardingResult?.data?.completed || false;
         
         // Check if permissions are granted
         const permResult = await window.electron.ipcRenderer.invoke('process:check-permissions');
@@ -35,8 +36,9 @@ const Home = () => {
     checkOnboardingStatus();
   }, []);
 
-  const handleOnboardingComplete = () => {
-    localStorage.setItem('aipaste-onboarding-complete', 'true');
+  const handleOnboardingComplete = async () => {
+    // Save to file-based settings
+    await window.electron.ipcRenderer.invoke('settings:set-onboarding-complete');
     setShowOnboarding(false);
   };
 

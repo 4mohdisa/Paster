@@ -1,4 +1,4 @@
-import { ipcMain, app } from 'electron';
+import { app, ipcMain } from 'electron';
 import { logInfo } from '../logger';
 import type { MainWindow } from '../main-window';
 import type { MenubarWindow } from '../menubar-window';
@@ -25,12 +25,6 @@ export function registerMenubarHandlers(
     return { success: true };
   });
 
-  // Hide menubar window
-  ipcMain.handle('menubar:hide', () => {
-    logInfo('Hiding menubar window');
-    menubarWindow.hide();
-    return { success: true };
-  });
 
   logInfo('Menubar IPC handlers registered');
 }

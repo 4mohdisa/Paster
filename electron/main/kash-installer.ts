@@ -246,7 +246,6 @@ export class KashInstaller {
           
           reject(new Error(`Installation failed: Kash binary not found after py-app-standalone`));
         } else {
-          const errorMsg = allOutput || `Process exited with code ${code}`;
           logError(`Failed to install Kash with code ${code}`);
           logError(`All output: ${allOutput.substring(0, 500)}`);
           reject(new Error(`Installation failed with code ${code}`));

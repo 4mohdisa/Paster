@@ -376,9 +376,9 @@ export default function Dashboard() {
                   </div>
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      // Clear onboarding flag
-                      localStorage.removeItem('aipaste-onboarding-complete');
+                    onClick={async () => {
+                      // Reset onboarding using file-based settings
+                      await window.electron.ipcRenderer.invoke('settings:reset-onboarding');
                       // Reload the page to trigger onboarding
                       window.location.reload();
                     }}

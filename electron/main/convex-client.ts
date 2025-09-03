@@ -70,13 +70,12 @@ export class ConvexClientManager {
   
   /**
    * Get clipboard history from Convex
+   * Used by backend for its own needs (like paste operations)
    */
-  async getHistory(limit: number = 50): Promise<any[]> {
+  async getHistory(limit?: number): Promise<any[]> {
     try {
       const client = this.getClient();
-      const history = await client.query(api.clipboardHistory.list, {
-        limit,
-      });
+      const history = await client.query(api.clipboardHistory.list, { limit });
       return history || [];
     } catch (error: any) {
       logError(`ConvexClient: Failed to get history: ${error.message}`);
@@ -85,44 +84,16 @@ export class ConvexClientManager {
   }
   
   /**
-   * Clear clipboard history in Convex
+   * Clear all clipboard history in Convex
+   * Used by backend if needed for maintenance
    */
   async clearHistory(): Promise<void> {
     try {
       const client = this.getClient();
       await client.mutation(api.clipboardHistory.clear, {});
-      logInfo('ConvexClient: Cleared history in Convex');
+      logInfo('ConvexClient: Cleared history');
     } catch (error: any) {
       logError(`ConvexClient: Failed to clear history: ${error.message}`);
-    }
-  }
-  
-  /**
-   * Sync settings to Convex
-   */
-  async syncSettings(settings: Record<string, any>): Promise<void> {
-    try {
-      const client = this.getClient();
-      await client.mutation(api.settings.sync, {
-        settings,
-      });
-      logInfo('ConvexClient: Synced settings to Convex');
-    } catch (error: any) {
-      logError(`ConvexClient: Failed to sync settings: ${error.message}`);
-    }
-  }
-  
-  /**
-   * Get settings from Convex
-   */
-  async getSettings(): Promise<Record<string, any>> {
-    try {
-      const client = this.getClient();
-      const settings = await client.query(api.settings.getAll);
-      return settings || {};
-    } catch (error: any) {
-      logError(`ConvexClient: Failed to get settings: ${error.message}`);
-      return {};
     }
   }
 }

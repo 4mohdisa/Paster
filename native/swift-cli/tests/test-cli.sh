@@ -13,7 +13,7 @@ TESTS_PASSED=0
 TESTS_FAILED=0
 
 # CLI binary path - relative to tests directory
-CLI_PATH="../.build/debug/AiPasteHelper"
+CLI_PATH="../.build/release/AiPasteHelper"
 
 # Test result tracking
 declare -a FAILED_TESTS=()
@@ -309,7 +309,6 @@ main() {
     # Run all test suites
     test_basic_cli
     test_settings
-    # test_permissions  # TODO: Function not defined yet
     test_formatting
     test_prefix
     test_edge_cases

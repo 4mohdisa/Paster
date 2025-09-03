@@ -4,7 +4,7 @@ echo "=== AiPaste CLI Quick Test Suite ==="
 echo ""
 
 # Path relative to tests directory
-CLI_PATH="../.build/debug/AiPasteHelper"
+CLI_PATH="../.build/release/AiPasteHelper"
 
 # Check if binary exists
 if [ ! -f "$CLI_PATH" ]; then

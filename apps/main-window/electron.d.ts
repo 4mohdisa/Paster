@@ -18,53 +18,19 @@ export interface IElectronAPI {
 	// Convex backend
 	convex: {
 		getInfo: () => Promise<any>;
-		start: () => Promise<any>;
-		stop: () => Promise<any>;
-		restart: () => Promise<any>;
 	};
 
-	// Kash integration (File processing)
+	// Kash integration  
 	kash: {
-		processFiles: (request: {
-			action: string;
-			files?: string[];
-			useSelection?: boolean;
-		}) => Promise<any>;
-		getFinderSelection: () => Promise<{
+		processFiles: (request: any) => Promise<any>;
+		getFinderSelection: () => Promise<any>;
+		startSelectionMonitor: () => Promise<any>;
+		stopSelectionMonitor: () => Promise<any>;
+		checkDependencies: () => Promise<any>;
+		install: (options?: any) => Promise<{
 			success: boolean;
-			files?: string[];
 			error?: string;
 		}>;
-		startSelectionMonitor: () => Promise<{ success: boolean; error?: string }>;
-		stopSelectionMonitor: () => Promise<{ success: boolean; error?: string }>;
-		checkDependencies: () => Promise<{
-			success: boolean;
-			dependencies?: {
-				python: boolean;
-				kash: boolean;
-				version?: string;
-			};
-			error?: string;
-		}>;
-		// Lazy-loading installation
-		checkInstallation: () => Promise<{
-			success: boolean;
-			installed: boolean;
-			actions: string[];
-		}>;
-		install: (options: {
-			actions: string[];
-		}) => Promise<{
-			success: boolean;
-			installedActions: string[];
-			error?: string;
-		}>;
-		uninstall: () => Promise<{ success: boolean }>;
-		onInstallProgress: (callback: (progress: {
-			percent: number;
-			message: string;
-			phase: 'preparing' | 'downloading' | 'installing' | 'configuring' | 'complete' | 'error';
-		}) => void) => () => void;
 	};
 
 	// IPC renderer - for direct communication
@@ -77,58 +43,9 @@ export interface IElectronAPI {
 	};
 }
 
-interface ActivateLicenseResponse {
-	activation_succeeded: boolean;
-	instance_id: string;
-	error: null | string;
-	meta: {
-		store_id: number;
-		product_id: number;
-	};
-}
-
 // Global augmentation for Window interface
 declare global {
 	interface Window {
 		electron: IElectronAPI;
-		api: {
-			getLicense: () => Promise<string>;
-			setLicense: (license: string) => Promise<void>;
-			getInstanceId: () => Promise<string>;
-			setInstanceId: (instanceId: string) => Promise<void>;
-			getEmail: () => Promise<string>;
-			setEmail: (email: string) => Promise<void>;
-
-			validateLicense: (
-				licenseKey: string,
-				instanceId: string,
-			) => Promise<boolean>;
-			activateLicense: (
-				licenseKey: string,
-				email: string,
-			) => Promise<ActivateLicenseResponse>;
-			deactivateLicense: (
-				licenseKey: string,
-				instanceId: string,
-			) => Promise<boolean>;
-
-			// // LLMs Setup
-			// getApiKeys: () => Promise<Record<string, string>>
-			// setApiKeys: (apiKeys: Record<string, string>) => Promise<void>
-			// getCustomModelUrl: () => Promise<string>
-			// setCustomModelUrl: (url: string) => Promise<void>
-
-			// // Search and Scrape
-			// getPerplexityApiKey: () => Promise<string>
-			// setPerplexityApiKey: (key: string) => Promise<void>
-			// getFirecrawlApiKey: () => Promise<string>
-			// setFirecrawlApiKey: (key: string) => Promise<void>
-
-			// Survey
-			submitSurvey: (
-				surveyData: any,
-				email: string,
-			) => Promise<{ success: boolean; data?: any; error?: string }>;
-		};
 	}
 }

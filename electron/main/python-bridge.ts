@@ -1,10 +1,10 @@
 import { spawn } from 'child_process';
-import path from 'path';
 import { app } from 'electron';
 import { EventEmitter } from 'events';
-import { logInfo, logError } from './logger';
 import fs from 'fs';
+import path from 'path';
 import { KashInstaller } from './kash-installer';
+import { logError, logInfo } from './logger';
 
 export interface PythonProcessResult {
   success: boolean;
@@ -37,51 +37,42 @@ export class PythonBridge extends EventEmitter {
   }
 
   private setupKashPaths(): void {
-    // First check for lazy-loaded Kash environment in user's home
+    // Always prefer user-installed Kash in ~/.aipaste for both dev and prod
     const installer = new KashInstaller();
-    const userKashPath = installer.getKashPath();
-    const userPythonPath = installer.getPythonPath();
-    
-    // Then check for build-time environment (for development)
-    const kashEnvPath = app.isPackaged
-      ? path.join(process.resourcesPath, 'kash-env')
-      : path.join(__dirname, '..', '..', 'resources', 'kash-env');
+    let userKashPath = '';
+    let userPythonPath = '';
 
-    // Try to find Kash executable - prioritize user-installed over build-time
-    const possibleKashPaths = [
-      // User-installed Kash (from py-app-standalone)
-      userKashPath,
-      // Build-time Kash (if any)
-      path.join(kashEnvPath, 'bin', 'kash'),
-      path.join(kashEnvPath, 'Scripts', 'kash.exe'),
-    ].filter(p => {
-      try {
-        return fs.existsSync(p);
-      } catch {
-        return false;
-      }
-    });
+    try {
+      userKashPath = installer.getKashPath();
+    } catch {
+      userKashPath = '';
+    }
+    try {
+      userPythonPath = installer.getPythonPath();
+    } catch {
+      userPythonPath = '';
+    }
 
-    if (possibleKashPaths.length > 0) {
-      this.kashPath = possibleKashPaths[0];
-      logInfo(`Using standalone Kash: ${this.kashPath}`);
+    if (userKashPath && fs.existsSync(userKashPath)) {
+      this.kashPath = userKashPath;
+      logInfo(`Using user-installed Kash: ${this.kashPath}`);
     } else {
       // No Kash found - will need lazy installation
       this.kashPath = '';
       logInfo('Kash not found. Will prompt for installation when needed.');
     }
 
-    // Also keep Python path for fallback (if needed)
-    this.pythonPath = fs.existsSync(userPythonPath) ? userPythonPath : '';
+    // Keep Python path if user installation exists
+    this.pythonPath = userPythonPath && fs.existsSync(userPythonPath) ? userPythonPath : '';
 
     // Path to our ultimate Kash runner with FileStore
     this.scriptPath = app.isPackaged
       ? path.join(process.resourcesPath, 'kash-ultimate-runner.py')
       : path.join(__dirname, '..', '..', 'resources', 'kash-ultimate-runner.py');
-    
+
     logInfo(`Python script path: ${this.scriptPath}`);
     logInfo(`__dirname: ${__dirname}`);
-    
+
     // Debug: Check if script exists and read first line
     if (fs.existsSync(this.scriptPath)) {
       const firstLine = fs.readFileSync(this.scriptPath, 'utf8').split('\n')[0];
@@ -116,7 +107,7 @@ export class PythonBridge extends EventEmitter {
     // Check if Kash is installed
     const installer = new KashInstaller();
     const isInstalled = await installer.isKashInstalled();
-    
+
     if (!isInstalled) {
       return {
         success: false,
@@ -125,17 +116,17 @@ export class PythonBridge extends EventEmitter {
         error: 'Document processing features not installed'
       };
     }
-    
+
     // Re-setup paths if needed (in case Kash was just installed)
     if (!this.kashPath || !fs.existsSync(this.kashPath)) {
       this.setupKashPaths();
       await this.checkKash();
     }
-    
+
     if (!this.isReady) {
       await this.checkKash();
     }
-    
+
     // Debug: Check which version of the script we're running
     const versionCheck = spawn(this.pythonPath, [this.scriptPath, '--version']);
     versionCheck.stdout.on('data', (data) => {
@@ -238,7 +229,7 @@ export class PythonBridge extends EventEmitter {
           } catch (e) {
             logError(`Failed to parse Kash output: ${e}`);
             logError(`First 200 chars of stdout: "${stdout.substring(0, 200)}"`);
-            
+
             // Try to extract JSON even if there's garbage (same recovery as processFile)
             const match = stdout.match(/\{[\s\S]*\}$/);
             if (match) {
@@ -251,7 +242,7 @@ export class PythonBridge extends EventEmitter {
                 logError(`Could not recover JSON: ${e2}`);
               }
             }
-            
+
             resolve({
               success: false,
               error: 'Invalid JSON response from Kash',

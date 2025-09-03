@@ -27,12 +27,4 @@ export default defineSchema({
   })
     .index("by_timestamp", ["timestamp"])
     .index("by_success", ["success", "timestamp"]),
-  
-  // Example: User settings synced across devices
-  settings: defineTable({
-    key: v.string(),
-    value: v.any(),
-    updatedAt: v.number(),
-  })
-    .index("by_key", ["key"]),
 });

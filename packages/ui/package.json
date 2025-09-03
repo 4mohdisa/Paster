@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@aipaste/typescript-config": "workspace:*",
+    "@tailwindcss/postcss": "^4.1.12",
     "@types/react": "^19.1.0",
     "eslint": "^9.20.0",
     "postcss": "^8.4.49",

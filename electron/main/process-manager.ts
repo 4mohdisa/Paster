@@ -8,6 +8,8 @@ import { convexClient } from './convex-client';
 import { api } from '../../convex/_generated/api';
 import * as fs from 'fs';
 import * as net from 'net';
+import * as http from 'http';
+import * as path from 'path';
 
 interface ManagedProcess {
   name: string;
@@ -665,7 +667,7 @@ export class ProcessManager extends EventEmitter {
   }
 
   /**
-   * Start the Convex backend process
+   * Start the Convex backend process (always starts fresh instance)
    */
   async startConvexBackend(): Promise<boolean> {
     logInfo('ProcessManager: Starting Convex backend...');
@@ -681,11 +683,34 @@ export class ProcessManager extends EventEmitter {
     // Check if binary exists
     if (!fs.existsSync(binaryPath)) {
       logError(`ProcessManager: Convex binary not found at ${binaryPath}`);
-      this.emit('convex-error', {
-        type: 'binary-missing',
-        message: 'Convex backend binary not found. Please ensure it is properly installed.'
-      });
-      return false;
+      logError('ProcessManager: Attempting to download Convex binary...');
+      
+      // Try to download the binary
+      try {
+        const { execSync } = require('child_process');
+        const scriptPath = path.join(__dirname, '..', '..', 'scripts', 'download-convex-binary.js');
+        
+        if (fs.existsSync(scriptPath)) {
+          logInfo('ProcessManager: Running download script...');
+          execSync(`node "${scriptPath}"`, { stdio: 'inherit' });
+          
+          // Check again after download
+          if (fs.existsSync(binaryPath)) {
+            logInfo('ProcessManager: Convex binary downloaded successfully!');
+          } else {
+            throw new Error('Binary still missing after download attempt');
+          }
+        } else {
+          throw new Error('Download script not found');
+        }
+      } catch (downloadError: any) {
+        logError(`ProcessManager: Failed to download Convex binary: ${downloadError.message}`);
+        this.emit('convex-error', {
+          type: 'binary-missing',
+          message: 'Convex backend binary not found and could not be downloaded. Please run: pnpm --filter @aipaste/electron convex:download'
+        });
+        return false;
+      }
     }
     
     // Ensure data directory exists
@@ -762,21 +787,11 @@ export class ProcessManager extends EventEmitter {
       
       config.isRunning = true;
       config.lastStartTime = Date.now();
-      
+
       // Handle stdout for readiness detection
       config.process.stdout?.on('data', (data: Buffer) => {
         const output = data.toString();
         logDebug(`${processName} stdout: ${output}`);
-        
-        // Check for readiness signal
-        if (output.includes('backend listening on') && output.includes(':52100')) {
-          logInfo(`ProcessManager: ${processName} is ready`);
-          
-          // Initialize Convex client singleton for backend saving
-          convexClient.initialize('http://127.0.0.1:52100');
-          
-          this.emit('convex-ready', this.convexInfo);
-        }
       });
       
       // Handle stderr
@@ -816,6 +831,20 @@ export class ProcessManager extends EventEmitter {
       this.startHeartbeatMonitoring(processName);
       
       logInfo(`ProcessManager: ${processName} started with PID ${config.process.pid}`);
+      
+      // Readiness: actively poll the configured backend URL instead of parsing stdout
+      const convexConfig = pathConfig.getConvexConfig();
+      this.waitForConvexReady(convexConfig.backendUrl)
+        .then(() => {
+          logInfo(`ProcessManager: ${processName} is ready at ${convexConfig.backendUrl}`);
+          convexClient.initialize(convexConfig.backendUrl);
+          this.emit('convex-ready', this.convexInfo);
+        })
+        .catch((err) => {
+          logError(`ProcessManager: ${processName} readiness check failed: ${err?.message || err}`);
+          this.emit('convex-error', { type: 'start-failed', message: 'Convex backend failed readiness check' });
+        });
+
       return true;
       
     } catch (error: any) {
@@ -890,6 +919,40 @@ export class ProcessManager extends EventEmitter {
     for (const [name] of this.processes) {
       this.stopProcess(name);
     }
+  }
+
+  /**
+   * Poll the Convex backend URL until it responds or timeout
+   */
+  private async waitForConvexReady(url: string, timeoutMs: number = 15000): Promise<void> {
+    const start = Date.now();
+
+    return new Promise((resolve, reject) => {
+      const attempt = () => {
+        const elapsed = Date.now() - start;
+        if (elapsed > timeoutMs) {
+          return reject(new Error('Timeout waiting for Convex backend'));
+        }
+
+        try {
+          const req = http.get(url, (res) => {
+            // Any HTTP response means the server is up
+            res.resume(); // drain
+            resolve();
+          });
+          req.on('error', () => {
+            setTimeout(attempt, 300);
+          });
+          req.setTimeout(1000, () => {
+            req.destroy();
+            setTimeout(attempt, 300);
+          });
+        } catch {
+          setTimeout(attempt, 300);
+        }
+      };
+      attempt();
+    });
   }
 }
 

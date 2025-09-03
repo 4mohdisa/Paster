@@ -35,7 +35,7 @@ export class PathConfig {
         'native',
         'swift-cli',
         '.build',
-        'debug',
+        'release',
         'AiPasteHelper'
       );
     }
@@ -101,9 +101,14 @@ export class PathConfig {
   
   /**
    * Get the Convex data directory path
-   * Uses unique subdirectory to avoid conflicts with other Convex installations
+   * Separates dev/prod databases for safety
    */
   getConvexDataDir(): string {
+    if (this.isDev) {
+      // Project-local database for development - easy to reset
+      return path.join(app.getAppPath(), '.convex-dev-db');
+    }
+    // User's app data directory for production - persistent
     return path.join(app.getPath('userData'), 'aipaste-convex-db');
   }
   

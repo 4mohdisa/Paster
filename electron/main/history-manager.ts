@@ -25,7 +25,7 @@ export class HistoryManager {
     original: string,
     formatted: string,
     format: string,
-    metadata?: any
+    _metadata?: any
   ): Promise<string> {
     const id = uuidv4();
 
@@ -55,7 +55,9 @@ export class HistoryManager {
           formatted: item.formatted,
           format: item.format,
           source: 'clipboard',
-          metadata: {}
+          metadata: {
+            detectedAs: item.format || 'table'
+          }
         };
       }
     } catch (error) {
@@ -75,7 +77,9 @@ export class HistoryManager {
           formatted: item.formatted,
           format: item.format,
           source: 'clipboard' as const,
-          metadata: {}
+          metadata: {
+            detectedAs: item.format || 'table'
+          }
         }));
       }
     } catch (error) {
@@ -96,7 +100,9 @@ export class HistoryManager {
           formatted: item.formatted,
           format: item.format,
           source: 'clipboard',
-          metadata: {}
+          metadata: {
+            detectedAs: item.format || 'table'
+          }
         };
       }
     } catch (error) {
@@ -117,7 +123,9 @@ export class HistoryManager {
           formatted: item.formatted,
           format: item.format,
           source: 'clipboard',
-          metadata: {}
+          metadata: {
+            detectedAs: item.format || 'table'
+          }
         };
       }
     } catch (error) {
@@ -135,7 +143,7 @@ export class HistoryManager {
     }
   }
 
-  async removeItem(id: string): Promise<boolean> {
+  async removeItem(_id: string): Promise<boolean> {
     logInfo(`HistoryManager: Remove item not implemented for Convex yet`);
     return false;
   }

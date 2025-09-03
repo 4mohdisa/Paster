@@ -1,11 +1,11 @@
 import { logInfo } from "../logger";
 import { registerSwiftHandlers } from "./swift";
 import { registerProcessManagerHandlers } from "./process-manager";
-// import { registerHistoryHandlers } from "./history"; // UNUSED - Using Convex for history now
 import { registerConvexHandlers } from "./convex";
 import { registerKashHandlers } from "./kash";
 import { registerKashInstallerHandlers } from "./kash-installer";
 import { registerMenubarHandlers } from "./menubar";
+import { registerSettingsHandlers } from "./settings";
 import type { MainWindow } from '../main-window';
 import type { MenubarWindow } from '../menubar-window';
 
@@ -15,7 +15,10 @@ import type { MenubarWindow } from '../menubar-window';
 export function registerAllHandlers(mainWindow?: MainWindow, menubarWindow?: MenubarWindow): void {
 	logInfo("Registering IPC handlers");
 	
-	// Register Swift bridge handlers (for settings)
+	// Register settings handlers (for onboarding state)
+	registerSettingsHandlers();
+	
+	// Register Swift bridge handlers (for Swift settings)
 	registerSwiftHandlers();
 	
 	// Register process manager handlers (for permissions & shortcuts)

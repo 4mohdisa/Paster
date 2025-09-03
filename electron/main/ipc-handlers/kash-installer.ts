@@ -10,27 +10,6 @@ export function registerKashInstallerHandlers(): void {
 
   const installer = new KashInstaller();
 
-  // Check if Kash is installed
-  ipcMain.handle('kash:check-installation', async () => {
-    try {
-      const installed = await installer.isKashInstalled();
-      const actions = await installer.getEnabledActions();
-      
-      return {
-        success: true,
-        installed,
-        actions
-      };
-    } catch (error) {
-      logError(`Failed to check Kash installation: ${error}`);
-      return {
-        success: false,
-        installed: false,
-        actions: [],
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  });
 
   // Install Kash with selected actions
   ipcMain.handle('kash:install', async (event, options: { actions?: string[] } = {}) => {
@@ -64,28 +43,6 @@ export function registerKashInstallerHandlers(): void {
       return result;
     } catch (error) {
       logError(`Kash installation error: ${error}`);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  });
-
-  // Uninstall Kash
-  ipcMain.handle('kash:uninstall', async () => {
-    try {
-      logInfo('Uninstalling Kash');
-      const success = await installer.uninstallKash();
-      
-      if (success) {
-        logInfo('Kash uninstalled successfully');
-      } else {
-        logError('Failed to uninstall Kash');
-      }
-      
-      return { success };
-    } catch (error) {
-      logError(`Kash uninstall error: ${error}`);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'

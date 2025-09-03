@@ -40,6 +40,17 @@ neutral.config.json
 
 pglite
 
-# Convex binaries
+# Convex binaries and data
 convex-local-backend
 electron/resources/bin/
+electron/convex_local_backend.sqlite3*
+electron/*.sqlite3*
+electron/convex_local_storage/
+aipaste-convex-db/
+.convex-dev-db/
+electron/.convex-dev-db/
+
+# Swift CLI build artifacts
+native/swift-cli/.build/
+native/swift-cli/.swiftpm/
+native/swift-cli/Package.resolved
