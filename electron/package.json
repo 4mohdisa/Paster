@@ -10,11 +10,10 @@
     "swift:build": "cd ../native/swift-cli && swift build -c release",
     "convex:download": "node scripts/download-convex-binary.js",
     "postinstall": "node scripts/download-convex-binary.js",
-    "dist": "pnpm swift:build && pnpm convex:download && electron-builder --dir",
-    "dist:prod": "pnpm swift:build && pnpm convex:download && electron-builder --config electron-builder-prod.yml",
+    "dist": "pnpm convex:download && electron-builder --dir",
+    "dist:prod": "pnpm convex:download && electron-builder --config electron-builder-prod.yml",
     "clean": "rm -rf build dist out resources/bin",
-    "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",

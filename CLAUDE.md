@@ -139,7 +139,7 @@ See `agent-docs/PROJECT_OVERVIEW.md` for current status and remaining work.
 - **JSON parse error**: Ensure all Swift CLI output is valid JSON
 - **Process not found**: Check paths in `electron/main/config/paths.ts`
 - **IPC handler not found**: Verify registration in `electron/main/ipc-handlers/index.ts`
-- **Swift binary missing**: Run `pnpm --filter @aipaste/electron swift:build`
+- **Swift binary missing**: Run `pnpm build:swift`
 
 ### Monorepo Issues
 - **Dependency not found**: Use workspace protocol: `"@aipaste/ui": "workspace:*"`

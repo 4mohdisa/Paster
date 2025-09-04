@@ -19,9 +19,8 @@ A macOS desktop application that provides intelligent clipboard management with 
 git clone <repository-url> && cd electron-aipaste
 pnpm install
 
-# Build requirements
-cd native/swift-cli && swift build -c release && cd ../..
-pnpm build:kash
+# Build Swift CLI (required)
+pnpm build:swift
 
 # Start development
 pnpm dev
@@ -34,7 +33,7 @@ pnpm dev
 - **Xcode Command Line Tools** (for Swift compilation)
 - **macOS** (required for native clipboard and permissions features)
 - **Git**
-- **Python 3.11+** and **uvx** (REQUIRED for Kash document conversion)
+- **No Python required** - UV is embedded automatically during build
 
 ### Full Installation Guide
 
@@ -71,9 +70,7 @@ pnpm dev
 
 5. **Build the Swift CLI** (Required first!)
    ```bash
-   cd native/swift-cli
-   swift build -c release
-   cd ../..
+   pnpm build:swift
    ```
    
    If you get Swift errors, ensure Xcode Command Line Tools are installed:
@@ -81,34 +78,171 @@ pnpm dev
    xcode-select --install
    ```
 
-6. **Build Kash Environment** (REQUIRED for document conversion)
-   ```bash
-   # Install uvx if not available
-   pip install --user pipx
-   pipx install uv
-   
-   # Build the Kash environment
-   pnpm build:kash
-   ```
-   > This creates a standalone Python environment with Kash framework for document conversion (Word, PDF, etc.)
+6. **Document Conversion Setup**
+   > UV (Python package manager) is embedded automatically during `pnpm build`
+   > Kash document processor installs automatically during onboarding (REQUIRED)
 
 ### Development
 
-**Start the development server**
+#### First Time Setup
 ```bash
+# 1. Install dependencies
+pnpm install
+
+# 2. Build Swift CLI (required)
+pnpm build:swift
+
+# 3. Start development environment
 pnpm dev
+
+# 4. In a SEPARATE terminal, sync Convex schema (IMPORTANT!)
+pnpm convex:dev
 ```
 
-This command automatically:
-- Ensures Kash environment exists
-- Starts Convex local backend (port 52100)
-- Starts Electron app with Swift CLI integration
-- Launches Next.js development server (port 3000 or 3001 if busy)
+> **⚠️ IMPORTANT**: You MUST run `pnpm convex:dev` in a separate terminal to sync your Convex schema with the local database. Without this, data operations will fail!
 
-The application will open in Electron. On first launch, it will guide you through:
+#### Daily Development Workflow
+
+**Starting fresh (recommended for clean state):**
+```bash
+# Cleans everything and starts fresh
+pnpm fresh     # Removes all build artifacts, databases, caches
+pnpm dev       # Start the app
+# In another terminal:
+pnpm convex:dev  # Sync Convex schema
+```
+
+**Quick start (when resuming work):**
+```bash
+pnpm dev         # Start the app
+# In another terminal:
+pnpm convex:dev  # Sync Convex schema
+```
+
+#### Understanding Dev vs Prod Paths
+
+During development, the app uses different paths than production:
+
+| Component | Development Path | Production Path |
+|-----------|-----------------|-----------------|
+| Convex DB | `.convex-dev-db/` (project root) | `~/Library/Application Support/AiPaste/aipaste-convex-db/` |
+| Settings | `.aipaste-settings.json` (project root) | `~/Library/Application Support/AiPaste/settings.json` |
+| Kash Env | `electron/resources/kash-env/` | Same (bundled with app) |
+| Logs | Console output | `~/Library/Logs/AiPaste/` |
+
+> **Why separate paths?** 
+> - Easy cleanup with `pnpm fresh`
+> - No pollution of production data
+> - Safe testing without affecting installed app
+
+#### The Fresh Command
+
+Use `pnpm fresh` when you need a clean slate:
+- After pulling new changes
+- When onboarding flow needs testing
+- If you encounter strange state issues
+- To test first-time user experience
+
+What it cleans:
+- All build artifacts (`dist/`, `build/`, `.next/`)
+- Development database (`.convex-dev-db/`)
+- Development settings (`.aipaste-settings.json`)
+- Node modules (optional, if you choose)
+- User data in Application Support (optional, if you choose)
+
+#### Common Development Tasks
+
+**Testing onboarding flow:**
+```bash
+pnpm fresh  # Reset to fresh state
+pnpm dev
+# Complete onboarding in the app
+```
+
+**Working on Convex schema:**
+```bash
+# Make changes to convex/ files
+# The running `pnpm convex:dev` will auto-sync
+# Check the Convex dashboard at http://localhost:52100
+```
+
+**Testing Swift CLI changes:**
+```bash
+# Make changes to native/swift-cli/
+pnpm build:swift  # Rebuild
+# Restart the app (Ctrl+C and pnpm dev)
+```
+
+**Testing production build:**
+```bash
+pnpm build  # Build everything
+pnpm dist   # Create distributable
+# Find the .dmg in electron/dist/
+```
+
+#### What Happens When You Run `pnpm dev`
+
+1. **Cleanup phase**: Kills any existing Electron/Swift processes
+2. **Parallel builds**: Three apps build simultaneously:
+   - Electron backend (with embedded UV for Kash)
+   - Main window (Next.js with Turbopack)
+   - Menubar app (Vite + React)
+3. **Convex backend**: Needs manual start with `pnpm convex:dev` (separate terminal)
+4. **Menubar appears**: Look for the AiPaste icon in your system tray/menubar
+5. **Swift CLI ready**: Clipboard monitoring active in background
+
+#### How to Use the Development App
+
+1. **Look for the menubar icon** (top right of your screen)
+2. **Click the icon** to see the menu:
+   - Quick Paste options
+   - Open Dashboard
+   - Settings
+3. **Click "Dashboard"** to open the main window where you can:
+   - Complete onboarding (first launch)
+   - Configure settings
+   - View clipboard history
+   - Manage document conversion
+
+On first launch, the dashboard will guide you through:
 - Granting Accessibility permissions (required for keyboard shortcuts)
 - Testing clipboard functionality
 - Configuring table formatting preferences
+- Installing Kash for document support (REQUIRED - happens automatically)
+
+#### Developer Troubleshooting
+
+**"Cannot find Convex client" or data operations fail:**
+- You forgot to run `pnpm convex:dev` in a separate terminal
+- Solution: Open new terminal, run `pnpm convex:dev`
+
+**Menubar icon doesn't appear:**
+- Check if process is actually running: `ps aux | grep AiPaste`
+- Try `pnpm fresh` to clean state
+- Check console for errors
+
+**"Onboarding already completed" but want to test it:**
+- Run `pnpm fresh` to reset everything
+- Or manually: `rm .aipaste-settings.json`
+
+**Changes to Swift code not taking effect:**
+- Must rebuild: `pnpm build:swift`
+- Then restart the app (Ctrl+C and `pnpm dev`)
+
+**Convex schema changes not syncing:**
+- Make sure `pnpm convex:dev` is running
+- Check http://localhost:52100 for Convex dashboard
+- If stuck, restart both `pnpm dev` and `pnpm convex:dev`
+
+**Kash installation hanging during onboarding:**
+- Check network connection (downloads ~200MB)
+- Check UV is embedded: `ls electron/resources/bin/uv`
+- Try `pnpm embed:uv` to re-download UV
+
+**Port conflicts:**
+- Next.js will auto-increment from 3000 to 3001, 3002, etc.
+- Convex needs port 52100 free
+- Kill conflicting processes or change ports
 
 ## 🏗️ Architecture Overview
 
@@ -117,7 +251,7 @@ The application will open in Electron. On first launch, it will guide you throug
 - **Next.js 15** (App Router) - UI framework with Turbopack
 - **Swift** - Native macOS functionality (clipboard, OCR, shortcuts)
 - **Convex** - Local backend for data persistence
-- **Kash** - Python-based document conversion framework
+- **Kash** - Document conversion framework (with embedded Python runtime)
 - **TypeScript** - Primary language for Electron and UI
 - **pnpm Workspaces** - Monorepo management
 
@@ -143,7 +277,7 @@ The application will open in Electron. On first launch, it will guide you throug
 4. **Kash Environment** enables:
    - Word/PDF document conversion
    - Advanced text processing
-   - Standalone Python runtime (no system Python needed)
+   - Standalone Python runtime via embedded UV (no system Python needed)
 
 ### Key Design Decisions
 - **Minimal Swift code** - Only for macOS-specific features
@@ -184,8 +318,7 @@ cd apps/main-window && pnpm dev
 cd electron && pnpm dev
 
 # Swift CLI development
-cd native/swift-cli
-swift build
+pnpm build:swift
 ./.build/release/AiPasteHelper test
 ```
 
@@ -250,7 +383,8 @@ tail -f ~/Library/Logs/@aipaste/electron/main.log
 
 #### Test Swift CLI Directly
 ```bash
-cd native/swift-cli
+# Build Swift CLI
+pnpm build:swift
 
 # Test clipboard formatting
 echo -e "Name\tAge\nJohn\t30" | ./.build/release/AiPasteHelper format --stdin
@@ -268,7 +402,7 @@ echo -e "Name\tAge\nJohn\t30" | ./.build/release/AiPasteHelper format --stdin
 pnpm clean:all
 
 # Just reset Kash
-pnpm clean:kash && pnpm build:kash
+pnpm clean:kash
 
 # Reset user data (while app is closed)
 rm -rf ~/Library/Application\ Support/@aipaste
@@ -321,13 +455,10 @@ rm -rf ~/Library/Logs/@aipaste
    ```
 
 8. **Kash environment build fails**
-   - Ensure Python 3.11+ is installed: `python3 --version`
-   - Install pipx if missing: `pip3 install --user pipx`
-   - Install uv through pipx: `pipx install uv`
-   - Verify uvx is in PATH: `which uvx`
-   - If uvx not found, add to PATH: `export PATH="$HOME/.local/bin:$PATH"`
-   - Run build command: `pnpm build:kash`
-   - The build creates a ~200MB Python environment in `electron/resources/kash-env/`
+   - UV binary is embedded during `pnpm build` (downloads ~20MB)
+   - No Python or pipx installation required
+   - Kash installs automatically during app onboarding (~200MB)
+   - Creates isolated Python environment in `electron/resources/kash-env/`
 
 ### Available Commands
 
@@ -339,8 +470,7 @@ pnpm dev:fresh    # Clean everything and start fresh development
 
 #### 🔨 Building & Distribution
 ```bash
-pnpm build        # Build everything (Kash, Swift, Next.js, Electron)
-pnpm build:kash   # Build Kash Python environment for document conversion
+pnpm build        # Build everything (Swift, Next.js, Electron)
 pnpm build:swift  # Build Swift CLI in release mode
 pnpm dist         # Build and package Electron app for distribution
 pnpm dist:prod    # Build production Electron app (requires code signing)
@@ -381,7 +511,7 @@ pnpm convex:deploy # Deploy functions to local Convex backend
 #### For Troubleshooting
 - **Type errors**: `pnpm typecheck`
 - **Dependency issues**: `pnpm clean:all`
-- **Kash issues**: `pnpm clean:kash && pnpm build:kash`
+- **Kash issues**: `pnpm clean:kash` (reinstalls during onboarding)
 - **Swift issues**: `pnpm build:swift`
 
 ### Project Structure
@@ -599,9 +729,9 @@ AiPaste uses a native Swift CLI to handle macOS-specific features that require l
 
 ```bash
 # Build for development (from root)
-pnpm swift:build
+pnpm build:swift
 
-# Or manually
+# Or manually (if needed)
 cd native/swift-cli && swift build -c release
 ```
 
@@ -802,8 +932,7 @@ NEXT_PUBLIC_API_URL=your-api-url
 - `pnpm dev:main-window` - Start only Next.js
 
 ### Swift CLI
-- `pnpm swift:build` - Build the Swift CLI component
-- `pnpm swift:test` - Test Swift CLI functionality (if available)
+- `pnpm build:swift` - Build the Swift CLI component
 
 ### Convex Backend
 - `pnpm convex:dev` - Start local Convex backend (auto-runs with `pnpm dev`)
@@ -836,7 +965,7 @@ Convex functions are automatically deployed when running `pnpm dev`. The local d
 ### Quick Swift CLI Test
 ```bash
 # Build the CLI first
-pnpm run swift:build
+pnpm build:swift
 
 # Test basic functionality
 ./.build/release/AiPasteHelper test
@@ -918,7 +1047,7 @@ This project is private and proprietary.
 - Try cleaning: `cd swift-cli && swift package clean && swift build`
 
 **AiPasteHelper not found**:
-- Build the CLI first: `pnpm run swift:build`
+- Build the CLI first: `pnpm build:swift`
 - Check binary exists: `ls -la swift-cli/.build/release/AiPasteHelper`
 - Verify permissions: `chmod +x swift-cli/.build/release/AiPasteHelper`
 
@@ -980,7 +1109,7 @@ This project is private and proprietary.
 
 ### Development Workflow
 1. **Swift CLI Development**: Make changes in `swift-cli/Sources/AiPasteHelper/`
-2. **Build Swift**: Run `pnpm run swift:build`
+2. **Build Swift**: Run `pnpm build:swift`
 3. **Test CLI**: Use `./.build/release/AiPasteHelper test`
 4. **Electron Development**: Make changes in `src/main/` and `src/app/`
 5. **Integration Testing**: Run `pnpm run dev` to test full integration
