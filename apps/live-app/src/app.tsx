@@ -2,7 +2,7 @@ import { createRoot } from "react-dom/client";
 import React, { useEffect, useState } from "react";
 
 import { PipecatProvider } from "./components/pipecat-comp/providers/PipecatProvider";
-import ChatContainer3 from "./components/ChatContiner-3";
+import ChatContainer3 from "./components/ChatContiner";
 
 const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);

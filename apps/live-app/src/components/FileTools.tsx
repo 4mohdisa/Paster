@@ -35,31 +35,31 @@ export const FileTools: React.FC = () => {
       return;
     }
     console.log('Requesting Directory Contents with options:', options);
-    const result = await window.electronAPI.getDirectoryContents(options);
-    console.log('Directory Contents Result:', result);
+    // const result = await window.electronAPI.getDirectoryContents(options);
+    // console.log('Directory Contents Result:', result);
   };
 
-  const handleGetFileStatus = async () => {
-    const options = getOptions();
-    if (Object.keys(options).length === 0) {
-      console.error('Please provide at least one identifier (ID, Path, or Name).');
-      return;
-    }
-    console.log('Requesting File Status with options:', options);
-    const result = await window.electronAPI.getFileStatus(options);
-    console.log('File Status Result:', result);
-  };
+  // const handleGetFileStatus = async () => {
+  //   const options = getOptions();
+  //   if (Object.keys(options).length === 0) {
+  //     console.error('Please provide at least one identifier (ID, Path, or Name).');
+  //     return;
+  //   }
+  //   console.log('Requesting File Status with options:', options);
+  //   const result = await window.electronAPI.getFileStatus(options);
+  //   console.log('File Status Result:', result);
+  // };
 
-  const handleGetFileContent = async () => {
-    const options = getOptions();
-    if (Object.keys(options).length === 0) {
-      console.error('Please provide at least one identifier (ID, Path, or Name).');
-      return;
-    }
-    console.log(`Requesting File Content with options: ${JSON.stringify(options)} and contentType: ${contentType}`);
-    const result = await window.electronAPI.getFileContent(options, contentType);
-    console.log('File Content Result:', result);
-  };
+  // const handleGetFileContent = async () => {
+  //   const options = getOptions();
+  //   if (Object.keys(options).length === 0) {
+  //     console.error('Please provide at least one identifier (ID, Path, or Name).');
+  //     return;
+  //   }
+  //   console.log(`Requesting File Content with options: ${JSON.stringify(options)} and contentType: ${contentType}`);
+  //   const result = await window.electronAPI.getFileContent(options, contentType);
+  //   console.log('File Content Result:', result);
+  // };
 
 
   return (
@@ -105,8 +105,8 @@ export const FileTools: React.FC = () => {
         <div className="flex flex-wrap gap-2">
           <button onClick={handleGetParentStatus} className="inline-flex items-center rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm hover:bg-neutral-50">Get parent status</button>
           <button onClick={handleGetDirectoryContents} className="inline-flex items-center rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm hover:bg-neutral-50">Get directory contents</button>
-          <button onClick={handleGetFileStatus} className="inline-flex items-center rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm hover:bg-neutral-50">Get file status</button>
-          <button onClick={handleGetFileContent} className="inline-flex items-center rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm hover:bg-neutral-50">Get file content</button>
+          {/* <button onClick={handleGetFileStatus} className="inline-flex items-center rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm hover:bg-neutral-50">Get file status</button> */}
+          {/* <button onClick={handleGetFileContent} className="inline-flex items-center rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm hover:bg-neutral-50">Get file content</button> */}
         </div>
       </div>
     </div>

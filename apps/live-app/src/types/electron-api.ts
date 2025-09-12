@@ -54,14 +54,8 @@ export interface ParentFileStatus {
 
 export interface ElectronAPI {
   getApiKey: () => Promise<string | null>;
-  getScreenSources: () => Promise<Electron.DesktopCapturerSource[]>;
   getParentStatus: () => Promise<ParentFileStatus>;
-  getDirectoryContents: (options: FileFinderOptions) => Promise<string[] | { error: string }>;
-  getFileStatus: (options: FileFinderOptions) => Promise<FileProcessingStatus | { error: string }>;
-  getFileContent: (
-    options: FileFinderOptions,
-    contentType: string,
-  ) => Promise<string | { error: string }>;
+
   getActiveTab: () => Promise<FileProcessingStatus | { error: string }>;
   getFilesInContext: () => Promise<FileProcessingStatus[] | { error: string }>;
   processTabData: (pageData: PageData) => Promise<void>;

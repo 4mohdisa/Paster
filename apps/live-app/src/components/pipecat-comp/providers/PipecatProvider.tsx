@@ -37,16 +37,6 @@ const pcClient = new PipecatClient({
   },
 });
 
-// pcClient.startBotAndConnect({
-//   endpoint: '/api/start', // Your server endpoint to start the bot and return the webrtcUrl
-// });
-// pcClient.connect({
-//   webrtcUrl: '/api/offer', // Your WebRTC offer/answer endpoint
-// });
-// pcClient.connect({
-//   webrtcUrl: "/api/offer", // Your WebRTC offer/answer endpoint
-// });
-
 export function PipecatProvider({ children }: PropsWithChildren) {
 
   return (

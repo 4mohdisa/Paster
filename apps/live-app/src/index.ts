@@ -19,9 +19,6 @@ import {
 import { Menubar, menubar } from "menubar";
 import WebSocket from "ws";
 
-import { getFileProcessingService } from "./services/file-processing";
-import { FileFinderOptions, PageData } from "./services/file-processing/types";
-
 dotenv.config();
 const windowWidth = 70;
 const windowHeight = 80;
@@ -67,9 +64,6 @@ let globalLlmConnectionState: boolean = false;
 
 // Utility
 const execAsync = promisify(exec);
-
-// Services
-const fileProcessingService = getFileProcessingService();
 
 // -------------------- PYTHON SERVER MANAGEMENT --------------------
 
@@ -219,7 +213,7 @@ app.on("before-quit", async (event) => {
     await stopPythonServer();
 
     // Cleanup incomplete file processing
-    await fileProcessingService.cleanupIncompleteProcessing();
+    // await fileProcessingService.cleanupIncompleteProcessing();
 
     // Cleanup global shortcuts
     cleanupGlobalShortcuts();
@@ -268,7 +262,7 @@ app.on("will-quit", async (event) => {
 
   try {
     await stopPythonServer();
-    await fileProcessingService.cleanupIncompleteProcessing();
+    // await fileProcessingService.cleanupIncompleteProcessing();
     cleanupGlobalShortcuts();
     console.log("⚡ Quick cleanup complete");
   } catch (error) {
@@ -416,7 +410,7 @@ function initializeMenuBar(): void {
     setupGlobalHotkeys();
     startPythonServer(); // Start Python server before WebSocket server
     setupWebSocketServer();
-    fileProcessingService.setMainWindow(mainWindow);
+    // fileProcessingService.setMainWindow(mainWindow);
     registerSimpleStreamingHotkeys();
     setupWindowHandlers();
   });
@@ -556,7 +550,7 @@ ipcMain.on("reset-drag-position", () => {
 ipcMain.on("set-pause-state", (_event, paused: boolean) => {
   const previousPauseState = globalPauseState;
   globalPauseState = paused;
-  fileProcessingService.setPaused(paused);
+  // fileProcessingService.setPaused(paused);
   console.log(`Global pause state updated: ${paused ? "PAUSED" : "ACTIVE"}`);
 
   // Request active tab data when session resumes (paused -> active) and LLM is connected
@@ -581,7 +575,7 @@ ipcMain.on("set-pause-state", (_event, paused: boolean) => {
 ipcMain.on("set-llm-connection-state", (_event, connected: boolean) => {
   const previousLlmConnectionState = globalLlmConnectionState;
   globalLlmConnectionState = connected;
-  fileProcessingService.setLlmConnectionState(connected);
+  // fileProcessingService.setLlmConnectionState(connected);
   console.log(
     `Global LLM connection state updated: ${connected ? "CONNECTED" : "DISCONNECTED"}`,
   );
@@ -664,78 +658,7 @@ ipcMain.handle("GET_SOURCES", async () => {
   }
 });
 
-// FileProcessingService APIs
-ipcMain.handle("fp-getParentStatus", () => {
-  return fileProcessingService.getParentStatus();
-});
 
-ipcMain.handle(
-  "fp-getDirectoryContents",
-  (_event, options: FileFinderOptions) => {
-    return fileProcessingService.getDirectoryContents(options);
-  },
-);
-
-ipcMain.handle("fp-getFileStatus", (_event, options: FileFinderOptions) => {
-  return fileProcessingService.getFileStatus(options);
-});
-
-ipcMain.handle(
-  "fp-getFileContent",
-  (_event, options: FileFinderOptions, contentType: string) => {
-    return fileProcessingService.getFileContent(options, contentType);
-  },
-);
-
-ipcMain.handle("fp-getActiveTab", () => {
-  return fileProcessingService.getActiveTab();
-});
-
-ipcMain.handle("fp-getFilesInContext", () => {
-  return fileProcessingService.getFilesInContext();
-});
-
-ipcMain.handle("fp-processTabData", (_event, pageData: PageData) => {
-  return fileProcessingService.processTabData(pageData);
-});
-
-ipcMain.handle(
-  "saveAudioChunkLocally",
-  (_event, chunk: string, timestamp?: number) => {
-    fileProcessingService.saveAudioChunkLocally(chunk, timestamp);
-  },
-);
-
-ipcMain.handle("fp-stitchAudio", () => {
-  return fileProcessingService.stitchAudioChunks();
-});
-
-ipcMain.handle(
-  "saveVideoFrameLocally",
-  (_event, frame: string, timestamp?: number) => {
-    fileProcessingService.saveVideoFrameLocally(frame, timestamp);
-  },
-);
-
-ipcMain.handle("fp-stitchVideo", () => {
-  return fileProcessingService.stitchVideoFrames();
-});
-
-ipcMain.handle("fp-mergeAudioAndVideo", () => {
-  return fileProcessingService.mergeAudioAndVideo();
-});
-
-ipcMain.handle("fp-createDataVariants", () => {
-  fileProcessingService.createDataVariants();
-});
-
-ipcMain.handle("saveLlmAudioChunkLocally", (_event, chunk: string) => {
-  fileProcessingService.saveLlmAudioChunkLocally(chunk);
-});
-
-ipcMain.handle("fp-stitchLlmAudio", () => {
-  return fileProcessingService.stitchLlmAudioChunks();
-});
 
 // No settings IPC: base directory is fixed
 
@@ -962,7 +885,7 @@ function setupGlobalHotkeys(): void {
         );
 
         if (mainWindow && !mainWindow.isDestroyed()) {
-          fileProcessingService.processFiles(selectedFiles);
+          // fileProcessingService.processFiles(selectedFiles);
         }
       } catch (error: any) {
         console.error("🔥 [HOTKEY] Error capturing selected files:", error);
@@ -1280,12 +1203,12 @@ const setupWebSocketServer = (): void => {
         } else if (data.type === "youtubeVideoUpdate") {
           if (Date.now() - lastUpdatedTimestamp > 500) {
             console.log("Processing YouTube Video");
-            fileProcessingService.processYouTubeVideo(data.youtubeData);
+            // fileProcessingService.processYouTubeVideo(data.youtubeData);
             lastUpdatedTimestamp = Date.now();
           }
         } else if (data.type === "tabDataUpdate") {
           if (Date.now() - lastUpdatedTimestamp > 500) {
-            fileProcessingService.processTabData(data.pageData);
+            // fileProcessingService.processTabData(data.pageData);
             lastUpdatedTimestamp = Date.now();
           }
         }

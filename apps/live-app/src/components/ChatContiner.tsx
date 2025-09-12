@@ -23,11 +23,6 @@ import {
 } from "@pipecat-ai/client-react";
 import { RTVIEvent } from "@pipecat-ai/client-js";
 
-import {
-  defaultVideoQualityPreset,
-  VideoQualityPreset,
-} from "../constants/screen-recorder";
-
 import { ChatMessage } from "./MessageList";
 import {
   PromptInput,
@@ -49,8 +44,8 @@ const ChatContainer3: React.FC = () => {
   const [message, setMessage] = useState<string>("");
   const [messages, _setMessages] = useState<ChatMessage[]>([]);
   const [paused, setPaused] = useState(false);
-  const [_videoQualityPreset, _setVideoQualityPreset] =
-    useState<VideoQualityPreset>(defaultVideoQualityPreset);
+  // const [_videoQualityPreset, _setVideoQualityPreset] =
+  //   useState<VideoQualityPreset>(defaultVideoQualityPreset);
   const [_showFileTools, _setShowFileTools] = useState<boolean>(false);
   const [_isMessagesVisible, _setIsMessagesVisible] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -64,7 +59,7 @@ const ChatContainer3: React.FC = () => {
     try {
       // Send message through WebRTC using RTVI protocol
       client.sendClientMessage('user-text-message', { 
-        text: message.trim() 
+        text: message.trim(), 
       });
       
       console.log("[MESSAGE] Sent to bot:", message.trim());

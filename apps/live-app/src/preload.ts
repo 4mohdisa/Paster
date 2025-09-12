@@ -4,7 +4,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 import type { ElectronAPI, PageData } from "./types/electron-api";
-import { FileFinderOptions } from "./services/file-processing/types";
 
 //  This is just dummy data, This gives you type safety when you access window.electronAPI
 //  Add fields in ./types/electron-api
@@ -15,20 +14,10 @@ const electronAPI: ElectronAPI = {
       resolve(key);
     });
   },
-  getScreenSources: async () => {
-    try {
-      return await ipcRenderer.invoke("GET_SOURCES");
-    } catch (error) {
-      throw new Error(`Failed to get screen sources: ${error.message}`);
-    }
-  },
+
   // File Processing Service
   getParentStatus: () => ipcRenderer.invoke("fp-getParentStatus"),
-  getDirectoryContents: (options: FileFinderOptions) =>
-    ipcRenderer.invoke("fp-getDirectoryContents", options),
-  getFileStatus: (options: FileFinderOptions) => ipcRenderer.invoke("fp-getFileStatus", options),
-  getFileContent: (options: FileFinderOptions, contentType: string) =>
-    ipcRenderer.invoke("fp-getFileContent", options, contentType),
+
   getActiveTab: () => ipcRenderer.invoke("fp-getActiveTab"),
   getFilesInContext: () => ipcRenderer.invoke("fp-getFilesInContext"),
   processTabData: (pageData: PageData) => ipcRenderer.invoke("fp-processTabData", pageData),
