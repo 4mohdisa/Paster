@@ -64,17 +64,19 @@ const electronAPI: ElectronAPI = {
     return () => ipcRenderer.removeListener("custom-hotkey-pressed", listener);
   },
 
-  // Secondary custom hotkey (Cmd+Shift+M)
-  onSecondaryCustomHotkey: (callback: () => void) => {
+  // Turn off all media hotkey (Cmd+Shift+M)
+  onTurnOffAllMedia: (callback: () => void) => {
     const listener = (_event: any) => callback();
-    ipcRenderer.on("secondary-custom-hotkey-pressed", listener);
-    return () => ipcRenderer.removeListener("secondary-custom-hotkey-pressed", listener);
+    ipcRenderer.on("hotkey-turn-off-all-media", listener);
+    return () => ipcRenderer.removeListener("hotkey-turn-off-all-media", listener);
   },
 
   // Window utilities
   // resizeWindow: (height: number) => ipcRenderer.send("resize-window", height),
-  resizeWindowFromBottom: (height: number, width: number) => ipcRenderer.send("resize-window-from-bottom", height, width),
-  resizeWindowFromBottomCentered: (height: number, width: number) => ipcRenderer.send("resize-window-from-bottom-centered", height, width),
+  resizeWindowFromBottom: (height: number, width: number) => 
+    ipcRenderer.send("resize-window-from-bottom", height, width),
+  resizeWindowFromBottomCentered: (height: number, width: number) => 
+    ipcRenderer.send("resize-window-from-bottom-centered", height, width),
   getWindowBounds: () => ipcRenderer.invoke("get-window-bounds"),
   moveWindow: (deltaX: number, deltaY: number) => ipcRenderer.send("move-window", deltaX, deltaY),
   resetDragPosition: () => ipcRenderer.send("reset-drag-position"),

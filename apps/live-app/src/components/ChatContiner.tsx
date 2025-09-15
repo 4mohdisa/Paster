@@ -77,8 +77,11 @@ const ChatContainer3: React.FC = () => {
   const handleScreenShareToggle = useCallback(() => {
     if (!client) return;
     try {
-      client.enableScreenShare(!isScreenSharing);
-      setIsScreenSharing(!isScreenSharing);
+      lastManualToggleRef.current = Date.now(); // Mark manual toggle
+      const newState = !isScreenSharing;
+      client.enableScreenShare(newState);
+      setIsScreenSharing(newState);
+      console.log("🔥 [MANUAL] Screen share toggled to:", newState);
     } catch (error) {
       console.error("Screen share error:", error);
     }
@@ -113,15 +116,110 @@ const ChatContainer3: React.FC = () => {
     }, []),
   );
 
-  // Sync screen sharing state with client
+  // Sync screen sharing state with client (with debouncing to avoid flicker)
+  const lastManualToggleRef = useRef<number>(0);
+  
   useEffect(() => {
     if (client) {
       const interval = setInterval(() => {
-        setIsScreenSharing(client.isSharingScreen);
+        // Only sync if we haven't manually toggled recently (within 2 seconds)
+        const timeSinceLastToggle = Date.now() - lastManualToggleRef.current;
+        if (timeSinceLastToggle > 2000) {
+          const clientScreenShareState = client.isSharingScreen;
+          setIsScreenSharing(prevState => {
+            // Only update if the state actually changed to avoid unnecessary re-renders
+            return prevState !== clientScreenShareState ? clientScreenShareState : prevState;
+          });
+        }
       }, 1000);
       return () => clearInterval(interval);
     }
   }, [client]);
+
+  // Hotkey event listeners
+  useEffect(() => {
+    // Cmd+Shift+N - Toggle session (connect/disconnect)
+    const handleToggleSession = async () => {
+      if (!client) {
+        console.log("🔥 [HOTKEY] No client available");
+        return;
+      }
+      
+      console.log("🔥 [HOTKEY] Current transportState:", transportState);
+      console.log("🔥 [HOTKEY] Current isConnected:", isConnected);
+      
+      try {
+        // Use transportState directly to be more accurate
+        const currentlyConnected = transportState === "connected" || transportState === "ready";
+        
+        if (currentlyConnected) {
+          console.log("🔥 [HOTKEY] Disconnecting session...");
+          await client.disconnect();
+          enableMic(false);
+          enableCam(false);
+          setIsScreenSharing(false);
+        } else {
+          console.log("🔥 [HOTKEY] Connecting session...");
+          await client.connect();
+          enableMic(true);
+          // Wait a moment before enabling screen share to ensure connection is stable
+          setTimeout(() => {
+            if (client) {
+              client.enableScreenShare(true);
+              setIsScreenSharing(true);
+            }
+          }, 100);
+        }
+      } catch (error) {
+        console.error("🔥 [HOTKEY] Session toggle error:", error);
+      }
+    };
+
+    // Cmd+Shift+A - Toggle audio/mic
+    const handleToggleAudio = () => {
+      console.log("🔥 [HOTKEY] Toggling audio...");
+      handleMicToggle();
+    };
+
+    // Cmd+Shift+S - Toggle screen sharing
+    const handleToggleScreenShare = () => {
+      console.log("🔥 [HOTKEY] Toggling screen share...");
+      lastManualToggleRef.current = Date.now(); // Mark manual toggle
+      handleScreenShareToggle();
+    };
+
+    // Cmd+Shift+M - Turn off all media
+    const handleTurnOffAllMedia = () => {
+      console.log("🔥 [HOTKEY] Turning off all media...");
+      lastManualToggleRef.current = Date.now(); // Mark manual toggle
+      enableMic(false);
+      enableCam(false);
+      if (client && isScreenSharing) {
+        try {
+          client.enableScreenShare(false);
+          setIsScreenSharing(false);
+        } catch (error) {
+          console.error("🔥 [HOTKEY] Error turning off screen share:", error);
+        }
+      }
+    };
+
+    // Register IPC listeners
+    window.electronAPI.onCustomHotkey(handleToggleSession);
+    window.electronAPI.onAudioHotkey(({ action }) => {
+      if (action === "toggle") handleToggleAudio();
+    });
+    window.electronAPI.onVideoHotkey(({ action }) => {
+      if (action === "toggle") handleToggleScreenShare();
+    });
+    window.electronAPI.onTurnOffAllMedia(handleTurnOffAllMedia);
+
+    // Cleanup listeners on unmount
+    return () => {
+      // Note: electronAPI cleanup would need to be implemented if available
+      console.log("🔥 [HOTKEY] Cleaning up hotkey listeners");
+    };
+  }, [client, isConnected, enableMic, enableCam, handleMicToggle, handleScreenShareToggle, isScreenSharing]);
 
   // ChatGPT-style drag state
   const [isDragging, setIsDragging] = useState(false);

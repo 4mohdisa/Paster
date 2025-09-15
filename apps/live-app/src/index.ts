@@ -856,64 +856,6 @@ function showPermissionErrorDialog(): void {
  * Global hotkey registration and flow (includes both file capture and window show hotkeys)
  */
 function setupGlobalHotkeys(): void {
-  // File capture hotkey (existing functionality)
-  const fileCaptureHotkey =
-    process.platform === "darwin" ? "Cmd+Shift+X" : "Ctrl+Shift+X";
-  const fileCaptureRegistered = globalShortcut.register(
-    fileCaptureHotkey,
-    async () => {
-      console.log(
-        `🔥 [HOTKEY] ${fileCaptureHotkey} pressed - capturing selected files...`,
-      );
-      try {
-        const selectedFiles = await getSelectedFiles();
-        if (selectedFiles.length === 0) {
-          console.log("🔥 [HOTKEY] No files selected in file explorer");
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send("selected-files-captured", {
-              success: false,
-              message: "No files selected in file explorer",
-              files: [],
-            });
-          }
-          return;
-        }
-
-        console.log(
-          `🔥 [HOTKEY] Captured ${selectedFiles.length} file(s):`,
-          selectedFiles.map((f) => f.name),
-        );
-
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          // fileProcessingService.processFiles(selectedFiles);
-        }
-      } catch (error: any) {
-        console.error("🔥 [HOTKEY] Error capturing selected files:", error);
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          // Send appropriate error message to renderer
-          const isPermissionError =
-            error.message && error.message.includes("Permission required");
-          mainWindow.webContents.send("selected-files-captured", {
-            success: false,
-            message: isPermissionError
-              ? "Permission required to access Finder. Please check the dialog for instructions."
-              : `Error capturing files: ${error.message}`,
-            files: [],
-          });
-        }
-      }
-    },
-  );
-
-  if (!fileCaptureRegistered) {
-    console.error(
-      `🔥 [HOTKEY] Failed to register file capture hotkey: ${fileCaptureHotkey}`,
-    );
-  } else {
-    console.log(
-      `🔥 [HOTKEY] File capture hotkey registered: ${fileCaptureHotkey}`,
-    );
-  }
 
   // Custom hotkey (Cmd+Shift+N)
   const customHotkey =
@@ -933,26 +875,26 @@ function setupGlobalHotkeys(): void {
     console.log(`🔥 [HOTKEY] Custom hotkey registered: ${customHotkey}`);
   }
 
-  // Secondary custom hotkey (Cmd+Shift+M)
-  const secondaryCustomHotkey =
+  // Turn off all media hotkey (Cmd+Shift+M)
+  const turnOffAllMediaHotkey =
     process.platform === "darwin" ? "Cmd+Shift+M" : "Ctrl+Shift+M";
-  const secondaryCustomHotkeyRegistered = globalShortcut.register(
-    secondaryCustomHotkey,
+  const turnOffAllMediaRegistered = globalShortcut.register(
+    turnOffAllMediaHotkey,
     () => {
       console.log(
-        `🔥 [HOTKEY] ${secondaryCustomHotkey} pressed - calling secondary custom handler...`,
+        `🔥 [HOTKEY] ${turnOffAllMediaHotkey} pressed - turning off all media...`,
       );
-      handleSecondaryCustomHotkey();
+      handleTurnOffAllMediaHotkey();
     },
   );
 
-  if (!secondaryCustomHotkeyRegistered) {
+  if (!turnOffAllMediaRegistered) {
     console.error(
-      `🔥 [HOTKEY] Failed to register secondary custom hotkey: ${secondaryCustomHotkey}`,
+      `🔥 [HOTKEY] Failed to register turn off all media hotkey: ${turnOffAllMediaHotkey}`,
     );
   } else {
     console.log(
-      `🔥 [HOTKEY] Secondary custom hotkey registered: ${secondaryCustomHotkey}`,
+      `🔥 [HOTKEY] Turn off all media hotkey registered: ${turnOffAllMediaHotkey}`,
     );
   }
 }
@@ -1050,9 +992,9 @@ function handleCustomHotkey(): void {
 }
 
 /**
- * Handle secondary custom hotkey press (Cmd+Shift+M)
+ * Handle turn off all media hotkey press (Cmd+Shift+M)
  */
-function handleSecondaryCustomHotkey(): void {
+function handleTurnOffAllMediaHotkey(): void {
   if (!mainWindow) {
     console.error("Main window not available");
     return;
@@ -1060,11 +1002,11 @@ function handleSecondaryCustomHotkey(): void {
 
   try {
     console.log(
-      "Secondary custom hotkey (Cmd+Shift+M) pressed - sending to renderer...",
+      "Turn off all media hotkey (Cmd+Shift+M) pressed - sending to renderer...",
     );
-    mainWindow.webContents.send("secondary-custom-hotkey-pressed");
+    mainWindow.webContents.send("hotkey-turn-off-all-media");
   } catch (error) {
-    console.error("Error handling secondary custom hotkey:", error);
+    console.error("Error handling turn off all media hotkey:", error);
   }
 }
 

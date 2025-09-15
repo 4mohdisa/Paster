@@ -81,11 +81,11 @@ export interface ElectronAPI {
   // Interface mode toggle
   onToggleInterfaceMode: (callback: () => void) => () => void;
   
-  // Custom hotkey (Cmd+Shift+N)
+  // Custom hotkey (Cmd+Shift+N) - Toggle session
   onCustomHotkey: (callback: () => void) => () => void;
   
-  // Secondary custom hotkey (Cmd+Shift+M)
-  onSecondaryCustomHotkey: (callback: () => void) => () => void;
+  // Turn off all media hotkey (Cmd+Shift+M)
+  onTurnOffAllMedia: (callback: () => void) => () => void;
   
   // Window utilities
   // resizeWindow: (height: number) => void;
