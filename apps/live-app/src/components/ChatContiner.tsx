@@ -42,12 +42,8 @@ const ChatContainer3: React.FC = () => {
   const { enableCam, isCamEnabled } = usePipecatClientCamControl();
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [message, setMessage] = useState<string>("");
-  const [messages, _setMessages] = useState<ChatMessage[]>([]);
+  const [messages] = useState<ChatMessage[]>([]);
   const [paused, setPaused] = useState(false);
-  // const [_videoQualityPreset, _setVideoQualityPreset] =
-  //   useState<VideoQualityPreset>(defaultVideoQualityPreset);
-  const [_showFileTools, _setShowFileTools] = useState<boolean>(false);
-  const [_isMessagesVisible, _setIsMessagesVisible] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showFullInterface, setShowFullInterface] = useState(false);
   const [showContext, setShowContext] = useState(false);

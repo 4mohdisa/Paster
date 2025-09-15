@@ -6,7 +6,9 @@
       "Bash(tree:*)",
       "mcp__deepwiki__ask_question",
       "mcp__deepwiki__read_wiki_contents",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(npm run lint)",
+      "Bash(npm run build:*)"
     ],
     "additionalDirectories": [
       "/Users/moinulmoin/Developer/clients/neutralbase/aipaste",
