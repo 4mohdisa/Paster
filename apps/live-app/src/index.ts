@@ -20,8 +20,8 @@ import { Menubar, menubar } from "menubar";
 import WebSocket from "ws";
 
 dotenv.config();
-const windowWidth = 70;
-const windowHeight = 80;
+const windowWidth = 5;
+const windowHeight = 5;
 
 // -------------------- EXTERNAL SERVICES / GLOBALS --------------------
 
