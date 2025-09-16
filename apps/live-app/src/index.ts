@@ -18,8 +18,14 @@ import {
 } from "electron";
 import { Menubar, menubar } from "menubar";
 import WebSocket from "ws";
+import { getFileProcessingService } from "./file-processing";
 
 dotenv.config();
+
+// Development logging configuration
+const _isDevelopment = !app.isPackaged;
+const _SUPPRESS_DEV_LOGS = process.env.SUPPRESS_DEV_LOGS === "true";
+
 const windowWidth = 5;
 const windowHeight = 5;
 
@@ -29,7 +35,7 @@ const resolvedGeminiApiKey =
   process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || "";
 if (!resolvedGeminiApiKey) {
   console.error(
-    "GEMINI_API_KEY/GOOGLE_AI_API_KEY is not set. Create a key in Google AI Studio or Google Cloud (with Generative Language API enabled) and place it in your .env as GEMINI_API_KEY.",
+    "GEMINI_API_KEY/GOOGLE_AI_API_KEY is not set. Create a key in Google AI Studio or Google Cloud (with Generative Language API enabled) and place it in your .env as GEMINI_API_KEY."
   );
 }
 
@@ -37,6 +43,7 @@ export const geminiAI = new GoogleGenAI({
   apiKey: resolvedGeminiApiKey,
 });
 
+const fileProcessingService = getFileProcessingService();
 let mainWindow: BrowserWindow | null = null;
 let mb: Menubar | null = null;
 
@@ -67,16 +74,11 @@ const execAsync = promisify(exec);
 
 // -------------------- PYTHON SERVER MANAGEMENT --------------------
 
-
-
-
 /**
  * Start the Python server using the best available method
  */
 function startPythonServer(): void {
   try {
-    console.log("🐍 Starting Python server...");
-    
     pythonServerProcess = spawn("/opt/homebrew/bin/uv", ["run", "server.py"], {
       cwd: PYTHON_SERVER_DIR,
       stdio: ["ignore", "pipe", "pipe"],
@@ -87,19 +89,46 @@ function startPythonServer(): void {
       },
     });
 
-    pythonServerProcess.stdout?.on("data", (data) => {
-      console.log(`🐍 [Python Server] ${data.toString().trim()}`);
+    pythonServerProcess.stdout?.on("data", (_data) => {
+      // Suppress Python server stdout logs
     });
 
     pythonServerProcess.stderr?.on("data", (data) => {
       const message = data.toString().trim();
-      if (!message.includes("DeprecationWarning")) {
-        console.log(`🐍 [Python Server Error] ${message}`);
+      // Filter out common non-error messages
+      const skipMessages = [
+        "DeprecationWarning",
+        "does not match the project environment",
+        "WARNING: Add NSCameraUseContinuityCameraDeviceType",
+        "WARNING: AVCaptureDeviceTypeExternal is deprecated",
+        "INFO:",  // Uvicorn info messages
+        "ᓚᘏᗢ Pipecat", // Pipecat startup message
+        "Started server process",
+        "Waiting for application startup",
+        "Application startup complete",
+        "Uvicorn running on",
+        "VERBOSE1:", // WebRTC verbose debug logs
+        "DEBUG:", // Pipecat debug logs
+        "webrtc:", // WebRTC general logs
+        "Offer -> Answer success", // WebRTC connection success
+        "Creating data channel", // WebRTC data channel creation
+        "DataChannel opened", // WebRTC data channel status
+        "DataChannel closed", // WebRTC data channel status
+        "PeerConnection closed", // WebRTC connection lifecycle
+        "Closing PeerConnection", // WebRTC connection lifecycle
+        "Transport close", // Transport layer status
+        "Processor stopped", // Pipecat processor status
+        "Session ended", // Session lifecycle
+      ];
+
+      const shouldSkip = skipMessages.some(skip => message.includes(skip));
+      if (!shouldSkip) {
+        console.error(`🐍 [Python Server Error] ${message}`);
       }
     });
 
-    pythonServerProcess.on("close", (code) => {
-      console.log(`🐍 Python server process exited with code ${code}`);
+    pythonServerProcess.on("close", (_code) => {
+      // Python server process exited
       pythonServerProcess = null;
     });
 
@@ -108,15 +137,11 @@ function startPythonServer(): void {
       pythonServerProcess = null;
     });
 
-    if (pythonServerProcess.pid) {
-      console.log(`🐍 Python server started with PID: ${pythonServerProcess.pid}`);
-    }
+    // Python server started successfully
   } catch (error) {
     console.error("🐍 Error starting Python server:", error);
   }
 }
-
-
 
 /**
  * Stop the Python server process
@@ -128,21 +153,21 @@ function stopPythonServer(): Promise<void> {
       return;
     }
 
-    console.log("🐍 Stopping Python server...");
-    
+    // Stopping Python server
+
     pythonServerProcess.on("close", () => {
-      console.log("🐍 Python server stopped successfully");
+      // Python server stopped successfully
       pythonServerProcess = null;
       resolve();
     });
 
     // Try graceful shutdown first
     pythonServerProcess.kill("SIGTERM");
-    
+
     // Force kill after 5 seconds if it doesn't stop gracefully
     setTimeout(() => {
       if (pythonServerProcess && !pythonServerProcess.killed) {
-        console.log("🐍 Force killing Python server...");
+        // Force killing Python server
         pythonServerProcess.kill("SIGKILL");
         pythonServerProcess = null;
         resolve();
@@ -162,24 +187,33 @@ if (require("electron-squirrel-startup")) {
 }
 
 // Essential WebRTC configuration for Electron
-console.log("🔌 [Electron Main] Configuring WebRTC command line switches...");
-app.commandLine.appendSwitch('--disable-web-security');
-app.commandLine.appendSwitch('--allow-running-insecure-content');
-app.commandLine.appendSwitch('--disable-features', 'WebRtcHideLocalIpsWithMdns');
+app.commandLine.appendSwitch("--disable-web-security");
+app.commandLine.appendSwitch("--allow-running-insecure-content");
+app.commandLine.appendSwitch(
+  "--disable-features",
+  "WebRtcHideLocalIpsWithMdns"
+);
 
 // Add comprehensive WebRTC debugging
-console.log("🔌 [Electron Main] Adding WebRTC debugging switches...");
-app.commandLine.appendSwitch('--enable-logging');
-app.commandLine.appendSwitch('--log-level', '0'); // INFO level
-app.commandLine.appendSwitch('--enable-webrtc-logs');
-app.commandLine.appendSwitch('--vmodule', 'webrtc*=1,pc*=1,sdp*=1');
+app.commandLine.appendSwitch("--enable-logging");
+app.commandLine.appendSwitch("--log-level", "3"); // ERROR level only (was 0=INFO)
+app.commandLine.appendSwitch("--enable-webrtc-logs");
+app.commandLine.appendSwitch("--vmodule", "webrtc*=1,pc*=1,sdp*=1");
 
 // Additional WebRTC flags to help with codec issues
-app.commandLine.appendSwitch('--force-webrtc-ip-handling-policy', 'default');
-app.commandLine.appendSwitch('--disable-features', 'WebRtcHybridAgcAudioProc');
+app.commandLine.appendSwitch("--force-webrtc-ip-handling-policy", "default");
+app.commandLine.appendSwitch("--disable-features", "WebRtcHybridAgcAudioProc");
+
+// Suppress development-only console noise
+if (!app.isPackaged) {
+  app.commandLine.appendSwitch("--disable-dev-shm-usage");
+  app.commandLine.appendSwitch("--no-sandbox");
+  // Reduce Electron console warnings in development
+  process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
+}
 
 // Log all command line switches that were applied
-console.log("🔌 [Electron Main] Applied command line switches:", process.argv);
+// Applied command line switches
 
 app.on("ready", initializeMenuBar);
 
@@ -202,7 +236,7 @@ let isCleaningUp = false;
 app.on("before-quit", async (event) => {
   if (isCleaningUp) return;
 
-  console.log("🛑 App shutting down - starting cleanup...");
+  // App shutting down - starting cleanup
   isCleaningUp = true;
 
   // Prevent immediate quit to allow cleanup
@@ -236,7 +270,7 @@ app.on("before-quit", async (event) => {
       mb = null as Menubar | null;
     }
 
-    console.log("🏁 Cleanup complete - app can now quit");
+    // Cleanup complete - app can now quit
   } catch (error) {
     console.error("❌ Error during app cleanup:", error);
   } finally {
@@ -248,7 +282,7 @@ app.on("before-quit", async (event) => {
 app.on("will-quit", async (event) => {
   if (isCleaningUp) return;
 
-  console.log("⚡ Force quit detected - attempting quick cleanup...");
+  // Force quit detected - attempting quick cleanup
   isCleaningUp = true;
 
   // Prevent immediate quit for a brief cleanup attempt
@@ -256,7 +290,7 @@ app.on("will-quit", async (event) => {
 
   // Set a timeout to ensure app quits even if cleanup hangs
   const timeoutId = setTimeout(() => {
-    console.log("⏰ Cleanup timeout - forcing quit");
+    // Cleanup timeout - forcing quit
     app.exit(0);
   }, 3000); // 3 second timeout
 
@@ -264,7 +298,7 @@ app.on("will-quit", async (event) => {
     await stopPythonServer();
     // await fileProcessingService.cleanupIncompleteProcessing();
     cleanupGlobalShortcuts();
-    console.log("⚡ Quick cleanup complete");
+    // Quick cleanup complete
   } catch (error) {
     console.error("❌ Error during quick cleanup:", error);
   } finally {
@@ -278,7 +312,7 @@ app.on("will-quit", async (event) => {
 function initializeMenuBar(): void {
   // Prevent duplicate initialization
   if (mb && !mb.window?.isDestroyed()) {
-    console.log("MenuBar already initialized and active");
+    // MenuBar already initialized and active
     return;
   }
 
@@ -332,7 +366,7 @@ function initializeMenuBar(): void {
         experimentalFeatures: true,
         // enableRemoteModule: false,
         // Enable access to WebRTC APIs
-        enableBlinkFeatures: 'WebRTCInsertableStreams',
+        enableBlinkFeatures: "WebRTCInsertableStreams",
       },
       fullscreenable: false,
     },
@@ -341,9 +375,6 @@ function initializeMenuBar(): void {
   });
 
   mb.on("ready", () => {
-    console.log("🔌 [Electron Main] Menu bar app is ready");
-    console.log("🔌 [Electron Main] WebRTC debugging is enabled");
-    console.log("🔌 [Electron Main] Command line switches active:", app.commandLine.hasSwitch('enable-webrtc-logs'));
     mainWindow = mb?.window ?? null;
 
     // Disable all menubar's internal window management events
@@ -386,13 +417,13 @@ function initializeMenuBar(): void {
 
       // Add our custom interface toggle function
       mb.tray.on("click", () => {
-        console.log("Tray clicked - toggling interface mode");
+        // Tray clicked - toggling interface mode
         toggleInterfaceMode();
       });
 
       // Prevent any other click handlers from interfering
       mb.tray.on("double-click", () => {
-        console.log("Tray double-clicked - toggling interface mode");
+        // Tray double-clicked - toggling interface mode
         toggleInterfaceMode();
       });
     }
@@ -400,9 +431,6 @@ function initializeMenuBar(): void {
     // Override menubar's internal clicked method to prevent interference
     if (mb && typeof (mb as any).clicked === "function") {
       (mb as any).clicked = () => {
-        console.log(
-          "Menubar internal clicked method called - redirecting to interface toggle",
-        );
         toggleInterfaceMode();
       };
     }
@@ -410,7 +438,7 @@ function initializeMenuBar(): void {
     setupGlobalHotkeys();
     startPythonServer(); // Start Python server before WebSocket server
     setupWebSocketServer();
-    // fileProcessingService.setMainWindow(mainWindow);
+    fileProcessingService.setMainWindow(mainWindow);
     registerSimpleStreamingHotkeys();
     setupWindowHandlers();
   });
@@ -423,7 +451,7 @@ function setupSessionHandlers(): void {
   session.defaultSession.setDisplayMediaRequestHandler(
     (
       _request: Electron.DisplayMediaRequestHandlerHandlerRequest,
-      callback: (streams: Electron.Streams) => void,
+      callback: (streams: Electron.Streams) => void
     ) => {
       desktopCapturer
         .getSources({ types: ["screen"] })
@@ -431,7 +459,7 @@ function setupSessionHandlers(): void {
           callback({ video: sources[0], audio: "loopback" });
         });
     },
-    { useSystemPicker: true },
+    { useSystemPicker: true }
   );
 
   // Content Security Policy
@@ -440,13 +468,16 @@ function setupSessionHandlers(): void {
       details: Electron.OnHeadersReceivedListenerDetails,
       callback: (
         headersReceivedResponse: Electron.HeadersReceivedResponse
-      ) => void,
+      ) => void
     ) => {
       // Fix Google Fonts MIME type issue
-      if (details.url.includes('fonts.googleapis.com') && details.responseHeaders) {
-        details.responseHeaders['content-type'] = ['text/css'];
+      if (
+        details.url.includes("fonts.googleapis.com") &&
+        details.responseHeaders
+      ) {
+        details.responseHeaders["content-type"] = ["text/css"];
       }
-      
+
       callback({
         responseHeaders: {
           ...details.responseHeaders,
@@ -462,7 +493,7 @@ function setupSessionHandlers(): void {
           ],
         },
       });
-    },
+    }
   );
 }
 
@@ -551,7 +582,7 @@ ipcMain.on("set-pause-state", (_event, paused: boolean) => {
   const previousPauseState = globalPauseState;
   globalPauseState = paused;
   // fileProcessingService.setPaused(paused);
-  console.log(`Global pause state updated: ${paused ? "PAUSED" : "ACTIVE"}`);
+  // Global pause state updated
 
   // Request active tab data when session resumes (paused -> active) and LLM is connected
   if (
@@ -559,13 +590,11 @@ ipcMain.on("set-pause-state", (_event, paused: boolean) => {
     paused === false &&
     globalLlmConnectionState === true
   ) {
-    console.log(
-      "Session resumed with LLM connected - requesting active tab data",
-    );
+    // Session resumed with LLM connected - requesting active tab data
     requestActiveTabDataFromExtension().catch((error) => {
       console.error(
         "Failed to request active tab data on session resume:",
-        error,
+        error
       );
     });
   }
@@ -576,9 +605,7 @@ ipcMain.on("set-llm-connection-state", (_event, connected: boolean) => {
   const previousLlmConnectionState = globalLlmConnectionState;
   globalLlmConnectionState = connected;
   // fileProcessingService.setLlmConnectionState(connected);
-  console.log(
-    `Global LLM connection state updated: ${connected ? "CONNECTED" : "DISCONNECTED"}`,
-  );
+  // LLM connection state updated
 
   // Request active tab data when LLM connects and session is not paused
   if (
@@ -586,13 +613,11 @@ ipcMain.on("set-llm-connection-state", (_event, connected: boolean) => {
     connected === true &&
     globalPauseState === false
   ) {
-    console.log(
-      "LLM connected with session active - requesting active tab data",
-    );
+    // LLM connected with session active - requesting active tab data
     requestActiveTabDataFromExtension().catch((error) => {
       console.error(
         "Failed to request active tab data on LLM connection:",
-        error,
+        error
       );
     });
   }
@@ -616,17 +641,17 @@ ipcMain.handle("GET_SOURCES", async () => {
 
     // Filter and prioritize screen sources, with primary display first
     const screenSources = sources.filter((source) =>
-      source.id.startsWith("screen:"),
+      source.id.startsWith("screen:")
     );
     const windowSources = sources.filter((source) =>
-      source.id.startsWith("window:"),
+      source.id.startsWith("window:")
     );
 
     // Find primary display (usually screen:0:0 on most systems)
     const primaryScreen = screenSources.find(
       (source) =>
         source.id.includes(":0:0") ||
-        source.name.toLowerCase().includes("entire screen"),
+        source.name.toLowerCase().includes("entire screen")
     );
 
     // Return sources with primary screen first, then other screens, then windows
@@ -646,10 +671,7 @@ ipcMain.handle("GET_SOURCES", async () => {
     // Add window sources last
     orderedSources.push(...windowSources);
 
-    console.log(
-      "Screen sources ordered:",
-      orderedSources.map((s) => ({ id: s.id, name: s.name })),
-    );
+    // Screen sources ordered
 
     return orderedSources;
   } catch (error) {
@@ -657,8 +679,6 @@ ipcMain.handle("GET_SOURCES", async () => {
     throw error;
   }
 });
-
-
 
 // No settings IPC: base directory is fixed
 
@@ -679,14 +699,14 @@ async function getSelectedFiles(): Promise<SelectedFile[]> {
   const platform = process.platform;
   try {
     switch (platform) {
-    case "darwin":
-      return await getSelectedFilesMacOS();
-    case "win32":
-      return await getSelectedFilesWindows();
-    case "linux":
-      return await getSelectedFilesLinux();
-    default:
-      throw new Error(`Unsupported platform: ${platform}`);
+      case "darwin":
+        return await getSelectedFilesMacOS();
+      case "win32":
+        return await getSelectedFilesWindows();
+      case "linux":
+        return await getSelectedFilesLinux();
+      default:
+        throw new Error(`Unsupported platform: ${platform}`);
     }
   } catch (error) {
     console.error("Error getting selected files:", error);
@@ -725,7 +745,7 @@ async function getSelectedFilesMacOS(): Promise<SelectedFile[]> {
       // Show permission error dialog
       showPermissionErrorDialog();
       throw new Error(
-        "Permission required: Please grant Automation permissions to access Finder",
+        "Permission required: Please grant Automation permissions to access Finder"
       );
     }
 
@@ -753,7 +773,7 @@ async function getSelectedFilesWindows(): Promise<SelectedFile[]> {
   `;
   try {
     const { stdout } = await execAsync(
-      `powershell -Command "${script.replace(/"/g, '\\"')}"`,
+      `powershell -Command "${script.replace(/"/g, '\\"')}"`
     );
     const result = stdout.trim();
     if (!result || result === "null") return [];
@@ -841,7 +861,7 @@ function showPermissionErrorDialog(): void {
       if (result.response === 0) {
         // Open System Preferences to Privacy settings
         execAsync(
-          "open 'x-apple.systempreferences:com.apple.preference.security?Privacy_Automation'",
+          "open 'x-apple.systempreferences:com.apple.preference.security?Privacy_Automation'"
         ).catch((execError) => {
           console.error("Error opening System Preferences:", execError);
         });
@@ -856,23 +876,17 @@ function showPermissionErrorDialog(): void {
  * Global hotkey registration and flow (includes both file capture and window show hotkeys)
  */
 function setupGlobalHotkeys(): void {
-
   // Custom hotkey (Cmd+Shift+N)
   const customHotkey =
     process.platform === "darwin" ? "Cmd+Shift+N" : "Ctrl+Shift+N";
   const customHotkeyRegistered = globalShortcut.register(customHotkey, () => {
-    console.log(
-      `🔥 [HOTKEY] ${customHotkey} pressed - calling custom handler...`,
-    );
     handleCustomHotkey();
   });
 
   if (!customHotkeyRegistered) {
     console.error(
-      `🔥 [HOTKEY] Failed to register custom hotkey: ${customHotkey}`,
+      `🔥 [HOTKEY] Failed to register custom hotkey: ${customHotkey}`
     );
-  } else {
-    console.log(`🔥 [HOTKEY] Custom hotkey registered: ${customHotkey}`);
   }
 
   // Turn off all media hotkey (Cmd+Shift+M)
@@ -881,20 +895,61 @@ function setupGlobalHotkeys(): void {
   const turnOffAllMediaRegistered = globalShortcut.register(
     turnOffAllMediaHotkey,
     () => {
-      console.log(
-        `🔥 [HOTKEY] ${turnOffAllMediaHotkey} pressed - turning off all media...`,
-      );
       handleTurnOffAllMediaHotkey();
-    },
+    }
   );
 
   if (!turnOffAllMediaRegistered) {
     console.error(
-      `🔥 [HOTKEY] Failed to register turn off all media hotkey: ${turnOffAllMediaHotkey}`,
+      `🔥 [HOTKEY] Failed to register turn off all media hotkey: ${turnOffAllMediaHotkey}`
     );
-  } else {
-    console.log(
-      `🔥 [HOTKEY] Turn off all media hotkey registered: ${turnOffAllMediaHotkey}`,
+  }
+
+  // File Capture hotkey (Cmd+Shift+X)
+  const fileCaptureHotkey =
+    process.platform === "darwin" ? "Cmd+Shift+X" : "Ctrl+Shift+X";
+  const fileCaptureRegistered = globalShortcut.register(
+    fileCaptureHotkey,
+    async () => {
+      try {
+        const selectedFiles = await getSelectedFiles();
+        if (selectedFiles.length === 0) {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send("selected-files-captured", {
+              success: false,
+              message: "No files selected in file explorer",
+              files: [],
+            });
+          }
+          return;
+        }
+
+        // Files captured successfully
+
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          // fileProcessingService.processFiles(selectedFiles);
+        }
+      } catch (error: any) {
+        console.error("🔥 [HOTKEY] Error capturing selected files:", error);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          // Send appropriate error message to renderer
+          const isPermissionError =
+            error.message && error.message.includes("Permission required");
+          mainWindow.webContents.send("selected-files-captured", {
+            success: false,
+            message: isPermissionError
+              ? "Permission required to access Finder. Please check the dialog for instructions."
+              : `Error capturing files: ${error.message}`,
+            files: [],
+          });
+        }
+      }
+    }
+  );
+
+  if (!fileCaptureRegistered) {
+    console.error(
+      `🔥 [HOTKEY] Failed to register file capture hotkey: ${fileCaptureHotkey}`
     );
   }
 }
@@ -918,9 +973,9 @@ function setDefaultWindowPosition(): void {
 
     mainWindow.setBounds(
       { x, y, width: windowWidth, height: dynamicWindowHeight },
-      false,
+      false
     );
-    console.log(`Window positioned at default bottom center: : x=${x}, y=${y}`);
+    // Window positioned at default location
   } catch (error) {
     console.error("Error setting default window position:", error);
   }
@@ -936,9 +991,7 @@ function setupPositionMemory(): void {
   mainWindow.on("move", () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       rememberedPosition = mainWindow.getBounds();
-      console.log(
-        `Window position remembered: x=${rememberedPosition.x}, y=${rememberedPosition.y}`,
-      );
+      // Position remembered
     }
   });
 
@@ -946,9 +999,7 @@ function setupPositionMemory(): void {
   mainWindow.on("resize", () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       rememberedPosition = mainWindow.getBounds();
-      console.log(
-        `Window size remembered: width=${rememberedPosition.width}, height=${rememberedPosition.height}`,
-      );
+      // Size remembered
     }
   });
 }
@@ -984,7 +1035,7 @@ function handleCustomHotkey(): void {
   }
 
   try {
-    console.log("Custom hotkey (Cmd+Shift+N) pressed - sending to renderer...");
+    // Custom hotkey pressed
     mainWindow.webContents.send("custom-hotkey-pressed");
   } catch (error) {
     console.error("Error handling custom hotkey:", error);
@@ -1001,9 +1052,7 @@ function handleTurnOffAllMediaHotkey(): void {
   }
 
   try {
-    console.log(
-      "Turn off all media hotkey (Cmd+Shift+M) pressed - sending to renderer...",
-    );
+    // Turn off all media hotkey pressed
     mainWindow.webContents.send("hotkey-turn-off-all-media");
   } catch (error) {
     console.error("Error handling turn off all media hotkey:", error);
@@ -1015,16 +1064,13 @@ function handleTurnOffAllMediaHotkey(): void {
  */
 function toggleInterfaceMode(): void {
   if (!mainWindow || mainWindow.isDestroyed()) {
-    console.log(
-      "Main window not available or destroyed - reinitializing app...",
-    );
-    // Recreate the menubar and window
+    // Main window not available or destroyed - reinitializing app
     initializeMenuBar();
     return;
   }
 
   try {
-    console.log("Toggling interface mode via IPC to renderer...");
+    // Toggling interface mode
     mainWindow.webContents.send("toggle-interface-mode");
   } catch (error) {
     console.error("Error toggling interface mode:", error);
@@ -1037,7 +1083,7 @@ function toggleInterfaceMode(): void {
 function setupWindowHandlers(): void {
   // Add IPC handler to reset position to default
   ipcMain.on("reset-window-position", () => {
-    console.log("Reset window position request received from renderer");
+    // Reset window position request received
     rememberedPosition = null;
     setDefaultWindowPosition();
   });
@@ -1062,9 +1108,7 @@ const requestActiveTabDataFromExtension = async (): Promise<void> => {
     try {
       // Check if we have any connected WebSocket clients
       if (wsClients.size === 0) {
-        console.log(
-          `Attempt ${attempt}/${maxRetries}: No Chrome extension connected`,
-        );
+        // No Chrome extension connected
         if (attempt < maxRetries) {
           await new Promise((resolve) => setTimeout(resolve, retryDelay));
           continue;
@@ -1092,20 +1136,17 @@ const requestActiveTabDataFromExtension = async (): Promise<void> => {
         throw new Error("No active WebSocket connections");
       }
 
-      console.log(
-        `Successfully requested active tab data from Chrome extension (attempt ${attempt}/${maxRetries})`,
-      );
+      // Successfully requested active tab data
       return; // Success, exit retry loop
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       console.error(
         `Attempt ${attempt}/${maxRetries} failed to request active tab data:`,
-        errorMessage,
+        errorMessage
       );
 
       if (attempt < maxRetries) {
-        console.log(`Retrying in ${retryDelay}ms...`);
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
       } else {
         console.error("All retry attempts failed to request active tab data");
@@ -1116,23 +1157,20 @@ const requestActiveTabDataFromExtension = async (): Promise<void> => {
 
 const setupWebSocketServer = (): void => {
   wss = new (require("ws").Server)({ port: WEBSOCKET_PORT });
-  console.log(`WebSocket server running on port ${WEBSOCKET_PORT}`);
+  // WebSocket server running
 
   wss.on("connection", (ws: WebSocket) => {
-    console.log("Chrome extension connected");
+    // Chrome extension connected
     const wasDisconnected = wsClients.size === 0;
     wsClients.add(ws);
 
     // Request active tab data when WebSocket transitions from disconnected to connected
     // and both session and LLM are in favorable states
     if (wasDisconnected && !globalPauseState && globalLlmConnectionState) {
-      console.log(
-        "WebSocket connected with session active and LLM connected - requesting active tab data",
-      );
       requestActiveTabDataFromExtension().catch((error) => {
         console.error(
           "Failed to request active tab data on WebSocket connection:",
-          error,
+          error
         );
       });
     }
@@ -1144,7 +1182,7 @@ const setupWebSocketServer = (): void => {
           ws.send(JSON.stringify({ type: "pong", timestamp: Date.now() }));
         } else if (data.type === "youtubeVideoUpdate") {
           if (Date.now() - lastUpdatedTimestamp > 500) {
-            console.log("Processing YouTube Video");
+            // Processing YouTube Video
             // fileProcessingService.processYouTubeVideo(data.youtubeData);
             lastUpdatedTimestamp = Date.now();
           }
@@ -1160,7 +1198,7 @@ const setupWebSocketServer = (): void => {
     });
 
     ws.on("close", () => {
-      console.log("Chrome extension disconnected");
+      // Chrome extension disconnected
       wsClients.delete(ws);
     });
 
@@ -1195,7 +1233,7 @@ const startHeartbeat = (): void => {
       });
 
       if (wsClients.size === 0) {
-        console.log("WebSocket server disconnected");
+        // WebSocket server disconnected
       }
     }
   }, 3000);
@@ -1212,7 +1250,7 @@ function registerSimpleStreamingHotkeys(): void {
   const audioRegistered = globalShortcut.register(audioHotkey, () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     mainWindow.webContents.send("hotkey-audio", { action: "toggle" });
-    console.log(`🔥 [HOTKEY] Audio toggle via ${audioHotkey}`);
+    // Audio toggle hotkey pressed
   });
   if (!audioRegistered) {
     console.error(`Failed to register audio hotkey: ${audioHotkey}`);
@@ -1221,7 +1259,7 @@ function registerSimpleStreamingHotkeys(): void {
   const videoRegistered = globalShortcut.register(videoHotkey, () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     mainWindow.webContents.send("hotkey-video", { action: "toggle" });
-    console.log(`🔥 [HOTKEY] Video toggle via ${videoHotkey}`);
+    // Video toggle hotkey pressed
   });
   if (!videoRegistered) {
     console.error(`Failed to register video hotkey: ${videoHotkey}`);

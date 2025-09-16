@@ -8,7 +8,11 @@
       "mcp__deepwiki__read_wiki_contents",
       "mcp__ide__getDiagnostics",
       "Bash(npm run lint)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run:*)",
+      "Bash(pnpm build:*)"
     ],
     "additionalDirectories": [
       "/Users/moinulmoin/Developer/clients/neutralbase/aipaste",
