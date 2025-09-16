@@ -18,6 +18,7 @@ import {
 } from "electron";
 import { Menubar, menubar } from "menubar";
 import WebSocket from "ws";
+
 import { getFileProcessingService } from "./file-processing";
 
 dotenv.config();
@@ -35,7 +36,7 @@ const resolvedGeminiApiKey =
   process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || "";
 if (!resolvedGeminiApiKey) {
   console.error(
-    "GEMINI_API_KEY/GOOGLE_AI_API_KEY is not set. Create a key in Google AI Studio or Google Cloud (with Generative Language API enabled) and place it in your .env as GEMINI_API_KEY."
+    "GEMINI_API_KEY/GOOGLE_AI_API_KEY is not set. Create a key in Google AI Studio or Google Cloud (with Generative Language API enabled) and place it in your .env as GEMINI_API_KEY.",
   );
 }
 
@@ -191,7 +192,7 @@ app.commandLine.appendSwitch("--disable-web-security");
 app.commandLine.appendSwitch("--allow-running-insecure-content");
 app.commandLine.appendSwitch(
   "--disable-features",
-  "WebRtcHideLocalIpsWithMdns"
+  "WebRtcHideLocalIpsWithMdns",
 );
 
 // Add comprehensive WebRTC debugging
@@ -451,7 +452,7 @@ function setupSessionHandlers(): void {
   session.defaultSession.setDisplayMediaRequestHandler(
     (
       _request: Electron.DisplayMediaRequestHandlerHandlerRequest,
-      callback: (streams: Electron.Streams) => void
+      callback: (streams: Electron.Streams) => void,
     ) => {
       desktopCapturer
         .getSources({ types: ["screen"] })
@@ -459,7 +460,7 @@ function setupSessionHandlers(): void {
           callback({ video: sources[0], audio: "loopback" });
         });
     },
-    { useSystemPicker: true }
+    { useSystemPicker: true },
   );
 
   // Content Security Policy
@@ -468,7 +469,7 @@ function setupSessionHandlers(): void {
       details: Electron.OnHeadersReceivedListenerDetails,
       callback: (
         headersReceivedResponse: Electron.HeadersReceivedResponse
-      ) => void
+      ) => void,
     ) => {
       // Fix Google Fonts MIME type issue
       if (
@@ -493,7 +494,7 @@ function setupSessionHandlers(): void {
           ],
         },
       });
-    }
+    },
   );
 }
 
@@ -594,7 +595,7 @@ ipcMain.on("set-pause-state", (_event, paused: boolean) => {
     requestActiveTabDataFromExtension().catch((error) => {
       console.error(
         "Failed to request active tab data on session resume:",
-        error
+        error,
       );
     });
   }
@@ -617,7 +618,7 @@ ipcMain.on("set-llm-connection-state", (_event, connected: boolean) => {
     requestActiveTabDataFromExtension().catch((error) => {
       console.error(
         "Failed to request active tab data on LLM connection:",
-        error
+        error,
       );
     });
   }
@@ -641,17 +642,17 @@ ipcMain.handle("GET_SOURCES", async () => {
 
     // Filter and prioritize screen sources, with primary display first
     const screenSources = sources.filter((source) =>
-      source.id.startsWith("screen:")
+      source.id.startsWith("screen:"),
     );
     const windowSources = sources.filter((source) =>
-      source.id.startsWith("window:")
+      source.id.startsWith("window:"),
     );
 
     // Find primary display (usually screen:0:0 on most systems)
     const primaryScreen = screenSources.find(
       (source) =>
         source.id.includes(":0:0") ||
-        source.name.toLowerCase().includes("entire screen")
+        source.name.toLowerCase().includes("entire screen"),
     );
 
     // Return sources with primary screen first, then other screens, then windows
@@ -697,19 +698,27 @@ interface SelectedFile {
  */
 async function getSelectedFiles(): Promise<SelectedFile[]> {
   const platform = process.platform;
+
   try {
+    let selectedFiles: SelectedFile[] = [];
+
     switch (platform) {
-      case "darwin":
-        return await getSelectedFilesMacOS();
-      case "win32":
-        return await getSelectedFilesWindows();
-      case "linux":
-        return await getSelectedFilesLinux();
-      default:
-        throw new Error(`Unsupported platform: ${platform}`);
+    case "darwin":
+      selectedFiles = await getSelectedFilesMacOS();
+      break;
+    case "win32":
+      selectedFiles = await getSelectedFilesWindows();
+      break;
+    case "linux":
+      selectedFiles = await getSelectedFilesLinux();
+      break;
+    default:
+      throw new Error(`Unsupported platform: ${platform}`);
     }
+
+    return selectedFiles;
   } catch (error) {
-    console.error("Error getting selected files:", error);
+    console.error("🔍 [FILE-SELECTION] Error getting selected files:", error);
     return [];
   }
 }
@@ -728,14 +737,30 @@ async function getSelectedFilesMacOS(): Promise<SelectedFile[]> {
       return filePaths
     end tell
   `;
+
   try {
     const { stdout } = await execAsync(`osascript -e '${script}'`);
+
     const pathsString = stdout.trim();
-    if (!pathsString || pathsString === "") return [];
+    if (!pathsString || pathsString === "") {
+      return [];
+    }
+
     const paths = pathsString.split(", ").map((p) => p.trim());
-    return await Promise.all(paths.map(async (p) => getFileInfo(p)));
+    const fileInfoResults = await Promise.all(paths.map(async (p) => {
+      try {
+        const fileInfo = await getFileInfo(p);
+        return fileInfo;
+      } catch (error) {
+        console.error(`🍎 [MACOS-SELECTION] Error processing file:`, p, error);
+        return null;
+      }
+    }));
+
+    const validFiles = fileInfoResults.filter((f): f is SelectedFile => f !== null);
+    return validFiles;
   } catch (error: any) {
-    console.error("Error getting macOS selected files:", error);
+    console.error("🍎 [MACOS-SELECTION] Error getting macOS selected files:", error);
 
     // Check if it's a permission error
     if (
@@ -745,7 +770,7 @@ async function getSelectedFilesMacOS(): Promise<SelectedFile[]> {
       // Show permission error dialog
       showPermissionErrorDialog();
       throw new Error(
-        "Permission required: Please grant Automation permissions to access Finder"
+        "Permission required: Please grant Automation permissions to access Finder",
       );
     }
 
@@ -773,7 +798,7 @@ async function getSelectedFilesWindows(): Promise<SelectedFile[]> {
   `;
   try {
     const { stdout } = await execAsync(
-      `powershell -Command "${script.replace(/"/g, '\\"')}"`
+      `powershell -Command "${script.replace(/"/g, '\\"')}"`,
     );
     const result = stdout.trim();
     if (!result || result === "null") return [];
@@ -816,21 +841,28 @@ async function getFileInfo(filePath: string): Promise<SelectedFile> {
   try {
     const stats = await fs.promises.stat(filePath);
     const parsedPath = path.parse(filePath);
-    return {
+
+    const fileInfo: SelectedFile = {
       path: filePath,
       name: parsedPath.name,
       extension: parsedPath.ext,
       size: stats.size,
       type: stats.isDirectory() ? "directory" : "file",
     };
-  } catch {
+
+    return fileInfo;
+  } catch (error) {
+    console.error("📄 [FILE-INFO] Could not stat file, using fallback:", filePath, error);
     const parsedPath = path.parse(filePath);
-    return {
+
+    const fallbackInfo: SelectedFile = {
       path: filePath,
       name: parsedPath.name,
       extension: parsedPath.ext,
       type: "file",
     };
+
+    return fallbackInfo;
   }
 }
 
@@ -861,7 +893,7 @@ function showPermissionErrorDialog(): void {
       if (result.response === 0) {
         // Open System Preferences to Privacy settings
         execAsync(
-          "open 'x-apple.systempreferences:com.apple.preference.security?Privacy_Automation'"
+          "open 'x-apple.systempreferences:com.apple.preference.security?Privacy_Automation'",
         ).catch((execError) => {
           console.error("Error opening System Preferences:", execError);
         });
@@ -885,7 +917,7 @@ function setupGlobalHotkeys(): void {
 
   if (!customHotkeyRegistered) {
     console.error(
-      `🔥 [HOTKEY] Failed to register custom hotkey: ${customHotkey}`
+      `🔥 [HOTKEY] Failed to register custom hotkey: ${customHotkey}`,
     );
   }
 
@@ -896,12 +928,12 @@ function setupGlobalHotkeys(): void {
     turnOffAllMediaHotkey,
     () => {
       handleTurnOffAllMediaHotkey();
-    }
+    },
   );
 
   if (!turnOffAllMediaRegistered) {
     console.error(
-      `🔥 [HOTKEY] Failed to register turn off all media hotkey: ${turnOffAllMediaHotkey}`
+      `🔥 [HOTKEY] Failed to register turn off all media hotkey: ${turnOffAllMediaHotkey}`,
     );
   }
 
@@ -913,6 +945,7 @@ function setupGlobalHotkeys(): void {
     async () => {
       try {
         const selectedFiles = await getSelectedFiles();
+
         if (selectedFiles.length === 0) {
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send("selected-files-captured", {
@@ -924,17 +957,25 @@ function setupGlobalHotkeys(): void {
           return;
         }
 
-        // Files captured successfully
-
         if (mainWindow && !mainWindow.isDestroyed()) {
-          // fileProcessingService.processFiles(selectedFiles);
+          mainWindow.webContents.send("selected-files-captured", {
+            success: true,
+            message: `${selectedFiles.length} file(s) captured`,
+            files: selectedFiles,
+          });
+
+          // Enable file processing
+          fileProcessingService.processFiles(selectedFiles);
         }
       } catch (error: any) {
-        console.error("🔥 [HOTKEY] Error capturing selected files:", error);
+        console.error("🔥 [FILE-CAPTURE] Error capturing selected files:", error);
+        console.error("🔥 [FILE-CAPTURE] Error stack:", error.stack);
+
         if (mainWindow && !mainWindow.isDestroyed()) {
           // Send appropriate error message to renderer
           const isPermissionError =
             error.message && error.message.includes("Permission required");
+
           mainWindow.webContents.send("selected-files-captured", {
             success: false,
             message: isPermissionError
@@ -944,12 +985,12 @@ function setupGlobalHotkeys(): void {
           });
         }
       }
-    }
+    },
   );
 
   if (!fileCaptureRegistered) {
     console.error(
-      `🔥 [HOTKEY] Failed to register file capture hotkey: ${fileCaptureHotkey}`
+      `🔥 [HOTKEY] Failed to register file capture hotkey: ${fileCaptureHotkey}`,
     );
   }
 }
@@ -973,7 +1014,7 @@ function setDefaultWindowPosition(): void {
 
     mainWindow.setBounds(
       { x, y, width: windowWidth, height: dynamicWindowHeight },
-      false
+      false,
     );
     // Window positioned at default location
   } catch (error) {
@@ -1143,7 +1184,7 @@ const requestActiveTabDataFromExtension = async (): Promise<void> => {
         error instanceof Error ? error.message : String(error);
       console.error(
         `Attempt ${attempt}/${maxRetries} failed to request active tab data:`,
-        errorMessage
+        errorMessage,
       );
 
       if (attempt < maxRetries) {
@@ -1157,10 +1198,8 @@ const requestActiveTabDataFromExtension = async (): Promise<void> => {
 
 const setupWebSocketServer = (): void => {
   wss = new (require("ws").Server)({ port: WEBSOCKET_PORT });
-  // WebSocket server running
 
   wss.on("connection", (ws: WebSocket) => {
-    // Chrome extension connected
     const wasDisconnected = wsClients.size === 0;
     wsClients.add(ws);
 
@@ -1170,7 +1209,7 @@ const setupWebSocketServer = (): void => {
       requestActiveTabDataFromExtension().catch((error) => {
         console.error(
           "Failed to request active tab data on WebSocket connection:",
-          error
+          error,
         );
       });
     }
@@ -1182,34 +1221,40 @@ const setupWebSocketServer = (): void => {
           ws.send(JSON.stringify({ type: "pong", timestamp: Date.now() }));
         } else if (data.type === "youtubeVideoUpdate") {
           if (Date.now() - lastUpdatedTimestamp > 500) {
-            // Processing YouTube Video
-            // fileProcessingService.processYouTubeVideo(data.youtubeData);
+            try {
+              fileProcessingService.processYouTubeVideo(data.youtubeData);
+            } catch (error) {
+              console.error("📺 [WEBSOCKET] Error processing YouTube video:", error);
+            }
             lastUpdatedTimestamp = Date.now();
           }
         } else if (data.type === "tabDataUpdate") {
           if (Date.now() - lastUpdatedTimestamp > 500) {
-            // fileProcessingService.processTabData(data.pageData);
+            try {
+              fileProcessingService.processTabData(data.pageData);
+            } catch (error) {
+              console.error("🌐 [WEBSOCKET] Error processing tab data:", error);
+            }
             lastUpdatedTimestamp = Date.now();
           }
         }
       } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
+        console.error("🔌 [WEBSOCKET] Error parsing message:", error);
       }
     });
 
     ws.on("close", () => {
-      // Chrome extension disconnected
       wsClients.delete(ws);
     });
 
     ws.on("error", (error: Error) => {
-      console.error("WebSocket error:", error);
+      console.error("🔌 [WEBSOCKET] WebSocket error:", error);
       wsClients.delete(ws);
     });
   });
 
   wss.on("error", (error) => {
-    console.error("WebSocket Server error:", error);
+    console.error("🔌 [WEBSOCKET] Server error:", error);
   });
 
   startHeartbeat();
