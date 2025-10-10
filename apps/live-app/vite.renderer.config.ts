@@ -26,7 +26,7 @@ export default defineConfig({
     host: 'localhost',
   },
   css: {
-    postcss: resolve(__dirname, 'postcss.config.mjs'),
+    postcss: resolve(__dirname, 'postcss.config.cjs'),
   },
   publicDir: resolve(__dirname, 'public'),
   base: './',

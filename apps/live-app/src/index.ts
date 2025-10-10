@@ -33,10 +33,10 @@ const windowHeight = 5;
 // -------------------- EXTERNAL SERVICES / GLOBALS --------------------
 
 const resolvedGeminiApiKey =
-  process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || "";
+  process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || process.env.GOOGLE_API_KEY || "";
 if (!resolvedGeminiApiKey) {
   console.error(
-    "GEMINI_API_KEY/GOOGLE_AI_API_KEY is not set. Create a key in Google AI Studio or Google Cloud (with Generative Language API enabled) and place it in your .env as GEMINI_API_KEY.",
+    "API key not found. Create a key in Google AI Studio and place it in your .env file as GEMINI_API_KEY, GOOGLE_AI_API_KEY, or GOOGLE_API_KEY.",
   );
 }
 
@@ -80,13 +80,35 @@ const execAsync = promisify(exec);
  */
 function startPythonServer(): void {
   try {
-    pythonServerProcess = spawn("/opt/homebrew/bin/uv", ["run", "server.py"], {
+    // Try to find uv in common locations
+    const possibleUvPaths = [
+      "/Users/mohammedisa/.local/bin/uv",
+      "/opt/homebrew/bin/uv",
+      "/usr/local/bin/uv",
+      "uv" // Let system PATH resolve it
+    ];
+
+    let uvPath = "uv"; // Default to system PATH
+
+    // Check if uv exists in any of the expected locations
+    for (const path of possibleUvPaths) {
+      try {
+        if (path !== "uv" && fs.existsSync(path)) {
+          uvPath = path;
+          break;
+        }
+      } catch {
+        // Continue to next path
+      }
+    }
+
+    pythonServerProcess = spawn(uvPath, ["run", "server.py"], {
       cwd: PYTHON_SERVER_DIR,
       stdio: ["ignore", "pipe", "pipe"],
       detached: false,
       env: {
         ...process.env,
-        PATH: process.env.PATH + ":/opt/homebrew/bin:/usr/local/bin",
+        PATH: process.env.PATH + ":/opt/homebrew/bin:/usr/local/bin:/Users/mohammedisa/.local/bin",
       },
     });
 

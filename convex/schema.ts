@@ -2,7 +2,6 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // Example: Clipboard history stored in Convex
   clipboardHistory: defineTable({
     content: v.string(),
     formatted: v.string(),
@@ -11,7 +10,6 @@ export default defineSchema({
   })
     .index("by_timestamp", ["timestamp"]),
   
-  // Kash document conversion history
   conversionHistory: defineTable({
     originalPath: v.string(),
     originalName: v.string(),
@@ -27,4 +25,28 @@ export default defineSchema({
   })
     .index("by_timestamp", ["timestamp"])
     .index("by_success", ["success", "timestamp"]),
+
+  // S3 file objects - stores S3 object keys instead of file paths
+  s3Objects: defineTable({
+    objectKey: v.string(),
+    fileName: v.string(),
+    fileSize: v.number(),
+    mimeType: v.string(),
+    storageType: v.string(),
+    parentObjectKey: v.optional(v.string()),
+    variantType: v.optional(v.string()),
+    timestamp: v.number(),
+  })
+    .index("by_timestamp", ["timestamp"])
+    .index("by_object_key", ["objectKey"])
+    .index("by_parent", ["parentObjectKey"]),
+
+  fileVariants: defineTable({
+    parentObjectKey: v.string(),
+    childObjectKey: v.string(),
+    variantType: v.string(),
+    timestamp: v.number(),
+  })
+    .index("by_parent", ["parentObjectKey"])
+    .index("by_child", ["childObjectKey"]),
 });

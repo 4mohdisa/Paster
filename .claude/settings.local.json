@@ -13,7 +13,8 @@
       "Bash(npm run typecheck:*)",
       "Bash(npm run:*)",
       "Bash(pnpm build:*)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(npm install:*)"
     ],
     "additionalDirectories": [
       "/Users/moinulmoin/Developer/clients/neutralbase/aipaste",

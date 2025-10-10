@@ -10,7 +10,7 @@ import type { ElectronAPI, PageData } from "./types/electron-api";
 const electronAPI: ElectronAPI = {
   getApiKey: () => {
     return new Promise((resolve) => {
-      const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || null;
+      const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || process.env.GOOGLE_API_KEY || null;
       resolve(key);
     });
   },
