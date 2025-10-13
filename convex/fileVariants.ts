@@ -75,6 +75,32 @@ export const getFileVariants = query({
   },
 });
 
+export const getVariantTypes = query({
+  args: {
+    parentObjectKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const variants = await ctx.db
+        .query("fileVariants")
+        .withIndex("by_parent", (q) => q.eq("parentObjectKey", args.parentObjectKey))
+        .collect();
+
+      return {
+        success: true,
+        parentObjectKey: args.parentObjectKey,
+        variantTypes: variants.map(v => v.variantType),
+        count: variants.length
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+});
+
 export const listFileHierarchy = query({
   args: {
     limit: v.optional(v.number()),
