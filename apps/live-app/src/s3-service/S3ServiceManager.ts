@@ -3,6 +3,7 @@
 
 import * as os from 'os';
 import * as path from 'path';
+import * as fs from 'fs/promises';
 import {
   FileMetadata,
   S3Config,
@@ -36,6 +37,7 @@ import {
 export class S3ServiceManager {
   private baseDir: string;
   private metadataDir: string;
+  private binaryCache: string;
   private config: S3Config;
   private metadataCache: Map<string, FileMetadata>;
 
@@ -43,6 +45,7 @@ export class S3ServiceManager {
     // Use same base directory pattern as existing FileProcessingService
     this.baseDir = baseDir || path.join(os.homedir(), '.neutralbase');
     this.metadataDir = path.join(this.baseDir, S3_CONFIG_DEFAULTS.METADATA_DIR_NAME);
+    this.binaryCache = path.join(this.baseDir, 'binary-cache');
 
     // Initialize configuration with defaults
     this.config = {
@@ -54,8 +57,8 @@ export class S3ServiceManager {
     // In-memory cache for frequently accessed metadata
     this.metadataCache = new Map();
 
-    // Ensure metadata directory exists
-    this.initializeMetadataStore();
+    // Ensure directories exist
+    this.initializeDirectories();
   }
 
   // =====================================================================
@@ -336,15 +339,93 @@ export class S3ServiceManager {
   // =====================================================================
 
   /**
-   * Initialize metadata store directory
+   * Initialize metadata store and binary cache directories
    */
-  private async initializeMetadataStore(): Promise<void> {
+  private async initializeDirectories(): Promise<void> {
     try {
       await FileSystemUtils.ensureDirectory(this.metadataDir);
-      console.log(`[S3ServiceManager] Initialized metadata store at: ${this.metadataDir}`);
+      await FileSystemUtils.ensureDirectory(this.binaryCache);
+      console.log(`[S3ServiceManager] Initialized directories:`);
+      console.log(`  Metadata: ${this.metadataDir}`);
+      console.log(`  Binary cache: ${this.binaryCache}`);
     } catch (error) {
-      console.error('[S3ServiceManager] Failed to initialize metadata store:', error);
+      console.error('[S3ServiceManager] Failed to initialize directories:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get binary cache path for object key
+   */
+  getBinaryCachePath(objectKey: string): string {
+    return path.join(this.binaryCache, objectKey);
+  }
+
+  /**
+   * Check if binary file exists in cache
+   */
+  async isBinaryCached(objectKey: string): Promise<boolean> {
+    const cachePath = this.getBinaryCachePath(objectKey);
+    return await FileSystemUtils.fileExists(cachePath);
+  }
+
+  /**
+   * Check if file size exceeds threshold (for cloud backup rule)
+   */
+  shouldBackupToCloud(fileSizeBytes: number, thresholdMB: number = 5): boolean {
+    const thresholdBytes = thresholdMB * 1024 * 1024; // Convert MB to bytes
+    return fileSizeBytes > thresholdBytes;
+  }
+
+  /**
+   * Copy file to cache (useful for testing and local file operations)
+   */
+  async copyToCache(sourcePath: string, objectKey: string): Promise<{ success: boolean; cachePath?: string; error?: string }> {
+    try {
+      const cachePath = this.getBinaryCachePath(objectKey);
+
+      // Check if source file exists
+      if (!await FileSystemUtils.fileExists(sourcePath)) {
+        return { success: false, error: `Source file not found: ${sourcePath}` };
+      }
+
+      // Copy file to cache
+      await fs.copyFile(sourcePath, cachePath);
+      console.log(`[S3ServiceManager] Copied file to cache: ${objectKey}`);
+
+      return { success: true, cachePath };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Download file from S3 to local cache (placeholder for Alex's experiments)
+   */
+  async downloadToCache(objectKey: string): Promise<{ success: boolean; cachePath?: string; error?: string }> {
+    try {
+      // Check if already cached
+      if (await this.isBinaryCached(objectKey)) {
+        const cachePath = this.getBinaryCachePath(objectKey);
+        return { success: true, cachePath };
+      }
+
+      // TODO: Implement actual S3 download
+      // For now, this is a placeholder structure for Alex's download button experiment
+      console.log(`[S3ServiceManager] Download to cache requested for: ${objectKey}`);
+
+      return {
+        success: false,
+        error: "Download functionality not yet implemented - placeholder for experiments"
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
     }
   }
 
