@@ -99,8 +99,8 @@ app.post('/api/s3/generate-upload-url', (req, res) => {
     const metadataPath = path.join(metadataDir, `${objectKey}.json`);
     fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
 
-    // Generate presigned URL
-    const signedUrl = `http://localhost:${port}/upload-metadata/${objectKey}`;
+    // Generate presigned URL for actual file upload
+    const signedUrl = `http://localhost:${port}/upload/${objectKey}`;
 
     res.json({
       success: true,
@@ -112,6 +112,63 @@ app.post('/api/s3/generate-upload-url', (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed generating upload URL',
+      message: error.message
+    });
+  }
+});
+
+// 2b. Handle actual file upload
+app.put('/upload/:objectKey', express.raw({ type: '*/*', limit: '50mb' }), (req, res) => {
+  try {
+    const { objectKey } = req.params;
+
+    if (!objectKey) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing objectKey parameter'
+      });
+    }
+
+    // Load metadata
+    const metadataDir = getMetadataDir();
+    const metadataPath = path.join(metadataDir, `${objectKey}.json`);
+
+    if (!fs.existsSync(metadataPath)) {
+      return res.status(404).json({
+        success: false,
+        error: `Object metadata not found: ${objectKey}`
+      });
+    }
+
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+
+    // Save file to binary cache
+    const binaryCacheDir = path.join(os.homedir(), '.neutralbase', 'binary-cache');
+    if (!fs.existsSync(binaryCacheDir)) {
+      fs.mkdirSync(binaryCacheDir, { recursive: true });
+    }
+
+    const filePath = path.join(binaryCacheDir, objectKey);
+    fs.writeFileSync(filePath, req.body);
+
+    // Update metadata with actual file size
+    metadata.fileSize = req.body.length;
+    metadata.uploadedAt = new Date().toISOString();
+    fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+
+    console.log(`✅ File uploaded successfully: ${objectKey} (${req.body.length} bytes)`);
+
+    res.json({
+      success: true,
+      objectKey,
+      fileSize: req.body.length,
+      message: 'File uploaded successfully'
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to upload file',
       message: error.message
     });
   }
@@ -141,7 +198,7 @@ app.post('/api/s3/generate-download-url', (req, res) => {
     }
 
     const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
-    const signedUrl = `http://localhost:${port}/download-metadata/${objectKey}`;
+    const signedUrl = `http://localhost:${port}/download/${objectKey}`;
 
     res.json({
       success: true,
@@ -153,6 +210,62 @@ app.post('/api/s3/generate-download-url', (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed generating download URL',
+      message: error.message
+    });
+  }
+});
+
+// 3b. Handle actual file download
+app.get('/download/:objectKey', (req, res) => {
+  try {
+    const { objectKey } = req.params;
+
+    if (!objectKey) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing objectKey parameter'
+      });
+    }
+
+    // Load metadata
+    const metadataDir = getMetadataDir();
+    const metadataPath = path.join(metadataDir, `${objectKey}.json`);
+
+    if (!fs.existsSync(metadataPath)) {
+      return res.status(404).json({
+        success: false,
+        error: `Object metadata not found: ${objectKey}`
+      });
+    }
+
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+
+    // Load file from binary cache
+    const binaryCacheDir = path.join(os.homedir(), '.neutralbase', 'binary-cache');
+    const filePath = path.join(binaryCacheDir, objectKey);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: `File not found in storage: ${objectKey}`
+      });
+    }
+
+    const fileContent = fs.readFileSync(filePath);
+
+    // Set headers for file download
+    res.setHeader('Content-Type', metadata.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${metadata.fileName}"`);
+    res.setHeader('Content-Length', fileContent.length);
+
+    console.log(`⬇️ File downloaded: ${objectKey} (${fileContent.length} bytes)`);
+
+    res.send(fileContent);
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to download file',
       message: error.message
     });
   }

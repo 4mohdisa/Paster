@@ -1,5 +1,4 @@
-// Local S3 Server - Express server implementation for S3-compatible operations
-// Following Context7 Express.js patterns and Alex's lightweight S3 server architecture
+// Local S3 Server
 
 import express from 'express';
 import {
@@ -16,10 +15,6 @@ import {
 } from './S3Types';
 import { S3ServiceManager } from './S3ServiceManager';
 
-/**
- * Local S3-compatible Express server
- * Provides REST API endpoints for S3 operations and metadata management
- */
 export class LocalS3Server {
   private app: express.Application;
   private server: any;
@@ -36,32 +31,21 @@ export class LocalS3Server {
     this.setupErrorHandling();
   }
 
-  // =====================================================================
-  // Section: Server Setup and Configuration
-  // =====================================================================
-
-  /**
-   * Setup Express middleware following Context7 patterns
-   */
   private setupMiddleware(): void {
-    // JSON parsing middleware (Context7 Express v4.16.0+ pattern)
     this.app.use(express.json({
       limit: '50mb',
       strict: true
     }));
 
-    // URL encoded form parsing
     this.app.use(express.urlencoded({
       extended: true,
       limit: '50mb'
     }));
 
-    // Request logging middleware (Context7 pattern)
     this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
       const timestamp = new Date().toISOString();
       console.log(`[LocalS3Server] ${timestamp} ${req.method} ${req.url}`);
 
-      // Add CORS headers for development
       res.header('Access-Control-Allow-Origin', '*');
       res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
@@ -69,49 +53,38 @@ export class LocalS3Server {
       next();
     });
 
-    // Handle preflight requests
     this.app.options('*', (req: express.Request, res: express.Response) => {
       res.sendStatus(HTTP_STATUS.OK);
     });
   }
 
-  /**
-   * Setup API routes following Context7 Express routing patterns
-   */
+
   private setupRoutes(): void {
-    // Health check endpoint
     this.app.get('/health', this.handleHealthCheck.bind(this));
 
-    // API endpoints for Postman testing
     this.app.post('/api/s3/generate-upload-url', this.handleAPIGenerateUploadURL.bind(this));
     this.app.post('/api/s3/generate-download-url', this.handleAPIGenerateDownloadURL.bind(this));
     this.app.get('/api/s3/metadata/:objectKey', this.handleAPIGetMetadata.bind(this));
     this.app.get('/api/s3/objects', this.handleAPIListObjects.bind(this));
     this.app.delete('/api/s3/objects/:objectKey', this.handleAPIDeleteObject.bind(this));
 
-    // S3-compatible endpoints (for future AWS SDK integration)
     this.app.put('/upload-metadata/:objectKey', this.handleS3PutObject.bind(this));
     this.app.get('/download-metadata/:objectKey', this.handleS3GetObject.bind(this));
     this.app.head('/download-metadata/:objectKey', this.handleS3HeadObject.bind(this));
     this.app.delete('/delete-metadata/:objectKey', this.handleS3DeleteObject.bind(this));
 
-    // Service status and configuration endpoints
     this.app.get('/api/s3/status', this.handleServiceStatus.bind(this));
     this.app.get('/api/s3/config', this.handleServiceConfig.bind(this));
 
-    // Catch-all route for undefined endpoints
     this.app.use('*', this.handleNotFound.bind(this));
   }
 
-  /**
-   * Setup error handling middleware (Context7 4-parameter error handler pattern)
-   */
+
   private setupErrorHandling(): void {
     this.app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
       console.error('[LocalS3Server] Unhandled error:', err.message);
       console.error('[LocalS3Server] Stack trace:', err.stack);
 
-      // Don't expose internal errors in production
       const isDevelopment = process.env.NODE_ENV !== 'production';
 
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
@@ -123,13 +96,11 @@ export class LocalS3Server {
     });
   }
 
-  // =====================================================================
-  // Section: API Route Handlers (Postman-ready endpoints)
-  // =====================================================================
+  
+  
+  
 
-  /**
-   * Health check endpoint
-   */
+
   private handleHealthCheck(req: express.Request, res: express.Response): void {
     res.json({
       status: 'ok',
@@ -141,9 +112,7 @@ export class LocalS3Server {
     });
   }
 
-  /**
-   * Generate upload URL - POST /api/s3/generate-upload-url
-   */
+
   private async handleAPIGenerateUploadURL(
     req: RequestWithBody<GenerateUploadURLRequest>,
     res: express.Response
@@ -168,9 +137,7 @@ export class LocalS3Server {
     }
   }
 
-  /**
-   * Generate download URL - POST /api/s3/generate-download-url
-   */
+
   private async handleAPIGenerateDownloadURL(
     req: RequestWithBody<GenerateDownloadURLRequest>,
     res: express.Response
@@ -195,9 +162,7 @@ export class LocalS3Server {
     }
   }
 
-  /**
-   * Get object metadata - GET /api/s3/metadata/:objectKey
-   */
+
   private async handleAPIGetMetadata(
     req: RequestWithParams<ObjectKeyParams>,
     res: express.Response
@@ -222,9 +187,7 @@ export class LocalS3Server {
     }
   }
 
-  /**
-   * List all objects - GET /api/s3/objects
-   */
+
   private async handleAPIListObjects(req: express.Request, res: express.Response): Promise<void> {
     try {
       const objects = await this.s3Service.listObjects();
@@ -240,9 +203,7 @@ export class LocalS3Server {
     }
   }
 
-  /**
-   * Delete object - DELETE /api/s3/objects/:objectKey
-   */
+
   private async handleAPIDeleteObject(
     req: RequestWithParams<ObjectKeyParams>,
     res: express.Response
@@ -276,13 +237,11 @@ export class LocalS3Server {
     }
   }
 
-  // =====================================================================
-  // Section: S3-Compatible Route Handlers (Future AWS SDK integration)
-  // =====================================================================
+  
+  
+  
 
-  /**
-   * S3-compatible PUT object (metadata storage)
-   */
+
   private async handleS3PutObject(
     req: RequestWithParams<ObjectKeyParams>,
     res: express.Response
@@ -291,7 +250,6 @@ export class LocalS3Server {
       const { objectKey } = req.params;
       const metadata = req.body;
 
-      // Validate metadata structure
       if (!metadata || !metadata.filePath) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({
           error: 'Invalid metadata: filePath is required'
@@ -311,9 +269,7 @@ export class LocalS3Server {
     }
   }
 
-  /**
-   * S3-compatible GET object (metadata retrieval)
-   */
+
   private async handleS3GetObject(
     req: RequestWithParams<ObjectKeyParams>,
     res: express.Response
@@ -334,9 +290,7 @@ export class LocalS3Server {
     }
   }
 
-  /**
-   * S3-compatible HEAD object (metadata check)
-   */
+
   private async handleS3HeadObject(
     req: RequestWithParams<ObjectKeyParams>,
     res: express.Response
@@ -355,9 +309,7 @@ export class LocalS3Server {
     }
   }
 
-  /**
-   * S3-compatible DELETE object
-   */
+
   private async handleS3DeleteObject(
     req: RequestWithParams<ObjectKeyParams>,
     res: express.Response
@@ -372,13 +324,11 @@ export class LocalS3Server {
     }
   }
 
-  // =====================================================================
-  // Section: Service Information Handlers
-  // =====================================================================
+  
+  
+  
 
-  /**
-   * Get service status
-   */
+
   private handleServiceStatus(req: express.Request, res: express.Response): void {
     const serviceState = this.s3Service.getServiceState();
     serviceState.isLocalServerRunning = true; // Update since server is running
@@ -394,9 +344,7 @@ export class LocalS3Server {
     });
   }
 
-  /**
-   * Get service configuration
-   */
+
   private handleServiceConfig(req: express.Request, res: express.Response): void {
     res.json({
       success: true,
@@ -417,9 +365,7 @@ export class LocalS3Server {
     });
   }
 
-  /**
-   * Handle 404 for undefined routes
-   */
+
   private handleNotFound(req: express.Request, res: express.Response): void {
     res.status(HTTP_STATUS.NOT_FOUND).json({
       success: false,
@@ -437,13 +383,11 @@ export class LocalS3Server {
     });
   }
 
-  // =====================================================================
-  // Section: Server Lifecycle Management
-  // =====================================================================
+  
+  
+  
 
-  /**
-   * Start the Express server
-   */
+
   start(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
@@ -464,9 +408,7 @@ export class LocalS3Server {
     });
   }
 
-  /**
-   * Stop the Express server gracefully
-   */
+
   stop(): Promise<void> {
     return new Promise((resolve) => {
       if (this.server) {
@@ -484,27 +426,21 @@ export class LocalS3Server {
     });
   }
 
-  /**
-   * Get Express app instance (for testing or external integration)
-   */
+
   getApp(): express.Application {
     return this.app;
   }
 
-  /**
-   * Check if server is running
-   */
+
   isRunning(): boolean {
     return this.server && this.server.listening;
   }
 
-  // =====================================================================
-  // Section: Private Helper Methods
-  // =====================================================================
+  
+  
+  
 
-  /**
-   * Handle route errors consistently
-   */
+
   private handleRouteError(res: express.Response, error: unknown, operation: string): void {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[LocalS3Server] Error ${operation}:`, errorMessage);

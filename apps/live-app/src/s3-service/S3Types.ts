@@ -1,10 +1,6 @@
-// S3 Service Types - TypeScript interfaces for S3-compatible operations
-// Based on Context7 TypeScript interface patterns and AWS S3 structures
+// S3 Service Types
 
-/**
- * File metadata stored in local S3 metadata store
- * Maps object keys to actual file locations and properties
- */
+// File metadata stored in local S3 metadata store
 export interface FileMetadata {
   objectKey: string;           // Unique S3 object identifier
   filePath: string;           // Actual macOS file location (not duplicated)
@@ -17,9 +13,7 @@ export interface FileMetadata {
   checksum?: string;          // Optional file hash for integrity
 }
 
-/**
- * S3 configuration for both local and cloud endpoints
- */
+// S3 configuration for both local and cloud endpoints
 export interface S3Config {
   localEndpoint: string;      // Local S3 server endpoint (http://localhost:9000)
   cloudEndpoint?: string;     // Future cloud S3 endpoint (R2, AWS, etc.)
@@ -31,10 +25,7 @@ export interface S3Config {
   bucketName?: string;        // Default bucket name
 }
 
-/**
- * Options for presigned URL generation
- * Based on AWS SDK patterns from Context7 research
- */
+// Options for presigned URL generation
 export interface PresignedURLOptions {
   expiresIn?: number;         // URL expiry in seconds (default: 3600)
   httpMethod: HTTPMethod;     // HTTP method for the operation
@@ -42,9 +33,7 @@ export interface PresignedURLOptions {
   headers?: Record<string, string>; // Additional headers to sign
 }
 
-/**
- * Request/Response interfaces for API endpoints
- */
+// Request/Response interfaces for API endpoints
 export interface GenerateUploadURLRequest {
   filePath: string;           // Source file path
   storageType: StorageType;   // Target storage type
@@ -78,9 +67,7 @@ export interface MetadataResponse {
   error?: string;             // Error message if failed
 }
 
-/**
- * Internal service state and errors
- */
+// Internal service state and errors
 export interface S3ServiceState {
   isLocalServerRunning: boolean;
   localServerPort: number;
@@ -95,9 +82,7 @@ export interface S3ServiceError extends Error {
   objectKey?: string;
 }
 
-/**
- * Type definitions and enums
- */
+// Type definitions and enums
 export type StorageType = 'local' | 'cloud';
 
 export type HTTPMethod = 'GET' | 'PUT' | 'POST' | 'DELETE' | 'HEAD';
@@ -113,9 +98,7 @@ export enum S3ErrorCode {
   PERMISSION_DENIED = 'PermissionDenied'
 }
 
-/**
- * Express route handler types for type safety
- */
+// Express route handler types for type safety
 export interface RequestWithBody<T> extends Express.Request {
   body: T;
 }
@@ -124,9 +107,7 @@ export interface RequestWithParams<T> extends Express.Request {
   params: T;
 }
 
-/**
- * Utility types for better type inference
- */
+// Utility types for better type inference
 export type ObjectKeyParams = {
   objectKey: string;
 };
@@ -137,9 +118,7 @@ export type ServiceMethodResult<T> = Promise<{
   error?: string;
 }>;
 
-/**
- * Configuration defaults following Context7 patterns
- */
+// Configuration defaults
 export const S3_CONFIG_DEFAULTS = {
   LOCAL_ENDPOINT: 'http://localhost:9000',
   DEFAULT_EXPIRY: 3600,              // 1 hour
@@ -151,9 +130,7 @@ export const S3_CONFIG_DEFAULTS = {
   DEFAULT_BUCKET: 'local-files'
 } as const;
 
-/**
- * HTTP status codes for API responses
- */
+// HTTP status codes for API responses
 export const HTTP_STATUS = {
   OK: 200,
   CREATED: 201,
