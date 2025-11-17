@@ -28,6 +28,7 @@ import {
   ValidationUtils,
   ErrorUtils
 } from './S3Utils';
+import { R2Service, R2Config } from './R2Service';
 
 export class S3ServiceManager {
   private baseDir: string;
@@ -35,6 +36,9 @@ export class S3ServiceManager {
   private binaryCache: string;
   private config: S3Config;
   private metadataCache: Map<string, FileMetadata>;
+  private r2Service: R2Service | null = null;
+  private cloudStorageEnabled: boolean;
+  private cloudStorageFallback: boolean;
 
   constructor(baseDir?: string) {
     this.baseDir = baseDir || path.join(os.homedir(), '.neutralbase');
@@ -47,6 +51,16 @@ export class S3ServiceManager {
     };
 
     this.metadataCache = new Map();
+
+    // Initialize cloud storage configuration
+    this.cloudStorageEnabled = process.env.CLOUD_STORAGE_ENABLED === 'true';
+    this.cloudStorageFallback = process.env.CLOUD_STORAGE_FALLBACK_TO_LOCAL !== 'false';
+
+    // Initialize R2 service if cloud storage is enabled
+    if (this.cloudStorageEnabled) {
+      this.initializeR2Service();
+    }
+
     this.initializeDirectories();
   }
 
@@ -283,8 +297,6 @@ export class S3ServiceManager {
   }
 
   private async initializeDirectories(): Promise<void> {
-
-  private async initializeDirectories(): Promise<void> {
     try {
       await FileSystemUtils.ensureDirectory(this.metadataDir);
       await FileSystemUtils.ensureDirectory(this.binaryCache);
@@ -294,6 +306,47 @@ export class S3ServiceManager {
     } catch (error) {
       console.error('[S3ServiceManager] Failed to initialize directories:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Initialize Cloudflare R2 cloud storage service
+   * Loads credentials from environment variables
+   */
+  private initializeR2Service(): void {
+    try {
+      const accountId = process.env.R2_ACCOUNT_ID;
+      const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+      const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+      const bucketName = process.env.R2_BUCKET_NAME || 'electron-app-storage';
+
+      // Validate required credentials
+      if (!accountId || !accessKeyId || !secretAccessKey) {
+        console.warn('[S3ServiceManager] R2 credentials missing, cloud storage disabled');
+        this.cloudStorageEnabled = false;
+        return;
+      }
+
+      const r2Config: R2Config = {
+        accountId,
+        accessKeyId,
+        secretAccessKey,
+        bucketName,
+      };
+
+      this.r2Service = new R2Service(r2Config);
+
+      if (this.r2Service.isServiceAvailable()) {
+        console.log('[S3ServiceManager] R2 cloud storage initialized successfully');
+      } else {
+        console.warn('[S3ServiceManager] R2 service unavailable, cloud storage disabled');
+        this.cloudStorageEnabled = false;
+        this.r2Service = null;
+      }
+    } catch (error) {
+      console.error('[S3ServiceManager] Failed to initialize R2 service:', error);
+      this.cloudStorageEnabled = false;
+      this.r2Service = null;
     }
   }
 
@@ -404,17 +457,66 @@ export class S3ServiceManager {
   }
 
 
+  /**
+   * Generate presigned URL for cloud upload via Cloudflare R2
+   * Automatically falls back to local storage if cloud is unavailable
+   */
   private async generateCloudUploadURL(objectKey: string, contentType: string): Promise<string> {
-    // TODO: Implement cloud presigned URL generation using AWS SDK
-    // This will be implemented when cloud integration is added
-    throw new Error('Cloud upload URLs not yet implemented');
+    // Check if cloud storage is available
+    if (!this.cloudStorageEnabled || !this.r2Service) {
+      if (this.cloudStorageFallback) {
+        console.warn('[S3ServiceManager] Cloud storage unavailable, falling back to local');
+        return this.generateLocalUploadURL(objectKey, contentType);
+      }
+      throw new Error('Cloud storage not available');
+    }
+
+    try {
+      const signedUrl = await this.r2Service.generateUploadURL(objectKey, contentType);
+      console.log('[S3ServiceManager] Cloud upload URL generated', { objectKey });
+      return signedUrl;
+    } catch (error) {
+      console.error('[S3ServiceManager] Failed to generate cloud upload URL:', error);
+
+      // Automatic fallback to local storage if enabled
+      if (this.cloudStorageFallback) {
+        console.warn('[S3ServiceManager] Falling back to local storage');
+        return this.generateLocalUploadURL(objectKey, contentType);
+      }
+
+      throw error;
+    }
   }
 
-
+  /**
+   * Generate presigned URL for cloud download via Cloudflare R2
+   * Automatically falls back to local storage if cloud is unavailable
+   */
   private async generateCloudDownloadURL(objectKey: string): Promise<string> {
-    // TODO: Implement cloud presigned URL generation using AWS SDK
-    // This will be implemented when cloud integration is added
-    throw new Error('Cloud download URLs not yet implemented');
+    // Check if cloud storage is available
+    if (!this.cloudStorageEnabled || !this.r2Service) {
+      if (this.cloudStorageFallback) {
+        console.warn('[S3ServiceManager] Cloud storage unavailable, falling back to local');
+        return this.generateLocalDownloadURL(objectKey);
+      }
+      throw new Error('Cloud storage not available');
+    }
+
+    try {
+      const signedUrl = await this.r2Service.generateDownloadURL(objectKey);
+      console.log('[S3ServiceManager] Cloud download URL generated', { objectKey });
+      return signedUrl;
+    } catch (error) {
+      console.error('[S3ServiceManager] Failed to generate cloud download URL:', error);
+
+      // Automatic fallback to local storage if enabled
+      if (this.cloudStorageFallback) {
+        console.warn('[S3ServiceManager] Falling back to local storage');
+        return this.generateLocalDownloadURL(objectKey);
+      }
+
+      throw error;
+    }
   }
 
 
