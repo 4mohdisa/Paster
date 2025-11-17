@@ -1060,10 +1060,37 @@ function createWindow() {
         function initializeApp() {
             console.log('🔥 initializeApp() CALLED!');
             log('info', 'system', 'Application loaded');
+            checkCloudStorageStatus();
             loadFiles();
             setupDragDrop();
             setupComprehensiveLogging();
             setupModalHandlers();
+        }
+
+        // Check and display cloud storage configuration
+        async function checkCloudStorageStatus() {
+            log('debug', 'system', 'Checking cloud storage configuration...');
+
+            try {
+                const status = await ipcRenderer.invoke('getCloudStorageStatus');
+
+                if (status.enabled) {
+                    log('success', 'config', '☁️ Cloud Storage: ENABLED', {
+                        provider: status.provider,
+                        bucket: status.bucketName,
+                        account: status.accountId,
+                        threshold: status.thresholdMB + ' MB',
+                        fallback: status.fallbackEnabled ? 'Yes' : 'No'
+                    });
+                } else {
+                    const level = status.missingCredentials ? 'warning' : 'info';
+                    log(level, 'config', '💾 Cloud Storage: DISABLED - ' + status.reason, {
+                        mode: 'Local storage only'
+                    });
+                }
+            } catch (error) {
+                log('error', 'config', 'Failed to check cloud storage status', { error: error.message });
+            }
         }
 
         // ULTRA-COMPREHENSIVE LOGGING - Track EVERYTHING
@@ -1894,6 +1921,84 @@ ipcMain.handle('downloadFile', async (event, objectKey) => {
     } catch (error) {
         addLog('error', 'api', 'Failed to get download URL from S3', { error: error.message });
         return { success: false, error: error.message };
+    }
+});
+
+// Cloud Storage Status Handler
+ipcMain.handle('getCloudStorageStatus', async () => {
+    addLog('info', 'ipc', 'Received cloud storage status request');
+
+    try {
+        const dotenv = require('dotenv');
+        const path = require('path');
+        const fs = require('fs');
+
+        // Load .env file
+        const envPath = path.join(__dirname, '.env');
+        const envExists = fs.existsSync(envPath);
+
+        if (!envExists) {
+            addLog('warning', 'config', 'No .env file found');
+            return {
+                enabled: false,
+                reason: 'No .env configuration file found',
+                localOnly: true
+            };
+        }
+
+        dotenv.config({ path: envPath });
+
+        const cloudEnabled = process.env.CLOUD_STORAGE_ENABLED === 'true';
+        const r2AccountId = process.env.R2_ACCOUNT_ID;
+        const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID;
+        const r2BucketName = process.env.R2_BUCKET_NAME || 'electron-app-storage';
+        const fallbackEnabled = process.env.CLOUD_STORAGE_FALLBACK_TO_LOCAL !== 'false';
+        const thresholdMB = parseInt(process.env.CLOUD_STORAGE_THRESHOLD_MB || '5');
+
+        if (!cloudEnabled) {
+            addLog('info', 'config', 'Cloud storage disabled via configuration');
+            return {
+                enabled: false,
+                reason: 'CLOUD_STORAGE_ENABLED is false',
+                localOnly: true
+            };
+        }
+
+        const hasCredentials = r2AccountId && r2AccessKeyId && process.env.R2_SECRET_ACCESS_KEY;
+
+        if (!hasCredentials) {
+            addLog('warning', 'config', 'Cloud storage enabled but credentials missing');
+            return {
+                enabled: false,
+                reason: 'R2 credentials not configured',
+                localOnly: true,
+                missingCredentials: true
+            };
+        }
+
+        addLog('success', 'config', 'Cloud storage (R2) configured and ready', {
+            bucketName: r2BucketName,
+            accountId: r2AccountId?.substring(0, 8) + '...',
+            thresholdMB,
+            fallbackEnabled
+        });
+
+        return {
+            enabled: true,
+            provider: 'Cloudflare R2',
+            bucketName: r2BucketName,
+            accountId: r2AccountId?.substring(0, 8) + '...',
+            thresholdMB,
+            fallbackEnabled,
+            localOnly: false
+        };
+    } catch (error) {
+        addLog('error', 'config', 'Failed to check cloud storage status', { error: error.message });
+        return {
+            enabled: false,
+            reason: 'Error reading configuration: ' + error.message,
+            localOnly: true
+        };
     }
 });
 
