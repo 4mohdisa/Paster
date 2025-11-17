@@ -833,6 +833,55 @@ function createWindow() {
 
     <input type="file" id="fileInput" onchange="handleFileUpload(this.files[0])" />
 
+    <!-- File Details Modal -->
+    <div id="fileDetailsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 12px; padding: 24px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #f0f0f0; padding-bottom: 12px;">
+                <h2 style="margin: 0; color: #333; font-size: 20px;">File Details</h2>
+                <button id="closeDetailsModal" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666; padding: 0; width: 32px; height: 32px; border-radius: 50%; transition: background 0.2s;">&times;</button>
+            </div>
+
+            <div style="display: grid; gap: 16px;">
+                <div>
+                    <div style="color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">File Name</div>
+                    <div id="detailFileName" style="color: #333; font-size: 16px; font-weight: 500; word-break: break-all;"></div>
+                </div>
+
+                <div>
+                    <div style="color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Object Key</div>
+                    <div id="detailObjectKey" style="color: #333; font-size: 14px; font-family: monospace; background: #f5f5f5; padding: 8px; border-radius: 4px; word-break: break-all;"></div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div>
+                        <div style="color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">File Size</div>
+                        <div id="detailFileSize" style="color: #333; font-size: 14px;"></div>
+                    </div>
+
+                    <div>
+                        <div style="color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Storage Type</div>
+                        <div id="detailStorageType" style="color: #333; font-size: 14px; text-transform: capitalize;"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">MIME Type</div>
+                    <div id="detailMimeType" style="color: #333; font-size: 14px; font-family: monospace; background: #f5f5f5; padding: 8px; border-radius: 4px;"></div>
+                </div>
+
+                <div>
+                    <div style="color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Upload Time</div>
+                    <div id="detailTimestamp" style="color: #333; font-size: 14px;"></div>
+                </div>
+
+                <div>
+                    <div style="color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Database ID</div>
+                    <div id="detailId" style="color: #333; font-size: 12px; font-family: monospace; background: #f5f5f5; padding: 8px; border-radius: 4px; word-break: break-all;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         console.log('🔥 SCRIPT TAG EXECUTING 🔥');
         const { ipcRenderer } = require('electron');
@@ -1013,6 +1062,7 @@ function createWindow() {
             loadFiles();
             setupDragDrop();
             setupComprehensiveLogging();
+            setupModalHandlers();
         }
 
         // ULTRA-COMPREHENSIVE LOGGING - Track EVERYTHING
@@ -1217,6 +1267,32 @@ function createWindow() {
             log('success', 'system', 'Comprehensive logging system initialized');
         }
 
+        function setupModalHandlers() {
+            log('debug', 'system', 'Setting up modal event handlers');
+
+            // Close modal on backdrop click
+            const modal = document.getElementById('fileDetailsModal');
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target.id === 'fileDetailsModal') {
+                        modal.style.display = 'none';
+                        log('debug', 'user', 'File details modal closed (backdrop click)');
+                    }
+                });
+            }
+
+            // Close modal on close button click
+            const closeButton = document.getElementById('closeDetailsModal');
+            if (closeButton) {
+                closeButton.addEventListener('click', () => {
+                    modal.style.display = 'none';
+                    log('debug', 'user', 'File details modal closed (close button)');
+                });
+            }
+
+            log('success', 'system', 'Modal handlers initialized');
+        }
+
         function setupDragDrop() {
             const uploadArea = document.getElementById('uploadArea');
             log('debug', 'system', 'Setting up drag and drop');
@@ -1393,12 +1469,12 @@ function createWindow() {
                 return;
             }
 
-            fileList.innerHTML = files.map(file => {
+            fileList.innerHTML = files.map((file, index) => {
                 const timeAgo = getTimeAgo(file.timestamp);
                 const sizeFormatted = formatBytes(file.fileSize);
                 const icon = getFileIcon(file.mimeType);
 
-                return '<div class="file-item">' +
+                return '<div class="file-item" onclick="showFileDetails(' + index + ')">' +
                     '<div class="file-icon">' + icon + '</div>' +
                     '<div class="file-info">' +
                     '<div class="file-name">' + file.fileName + '</div>' +
@@ -1406,8 +1482,8 @@ function createWindow() {
                     '</div>' +
                     '<div class="storage-badge ' + file.storageType + '">' + file.storageType + '</div>' +
                     '<div class="file-actions">' +
-                    '<button class="icon-btn" onclick="downloadFile(\\\'' + file.objectKey + '\\\')" title="Download">⬇</button>' +
-                    '<button class="icon-btn" onclick="deleteFile(\\\'' + file._id + '\\\')" title="Delete">🗑</button>' +
+                    '<button class="icon-btn" onclick="event.stopPropagation(); downloadFile(\\\'' + file.objectKey + '\\\')" title="Download">⬇</button>' +
+                    '<button class="icon-btn" onclick="event.stopPropagation(); deleteFile(\\\'' + file._id + '\\\')" title="Delete">🗑</button>' +
                     '</div>' +
                     '</div>';
             }).join('');
@@ -1522,6 +1598,28 @@ function createWindow() {
                 log('error', 'user', 'Delete failed', { error: error.message });
                 alert('❌ Failed to delete file: ' + error.message);
             }
+        }
+
+        function showFileDetails(fileIndex) {
+            const file = allFiles[fileIndex];
+            if (!file) {
+                log('error', 'user', 'File not found for details', { fileIndex });
+                return;
+            }
+
+            log('info', 'user', 'File details requested', { fileName: file.fileName });
+
+            // Populate modal fields
+            document.getElementById('detailFileName').textContent = file.fileName;
+            document.getElementById('detailObjectKey').textContent = file.objectKey;
+            document.getElementById('detailFileSize').textContent = formatBytes(file.fileSize);
+            document.getElementById('detailMimeType').textContent = file.mimeType;
+            document.getElementById('detailStorageType').textContent = file.storageType;
+            document.getElementById('detailTimestamp').textContent = new Date(file.timestamp).toLocaleString();
+            document.getElementById('detailId').textContent = file._id;
+
+            // Show modal
+            document.getElementById('fileDetailsModal').style.display = 'flex';
         }
 
         function refreshAll() {
