@@ -64,6 +64,7 @@ export class LocalS3Server {
 
     this.app.post('/api/s3/generate-upload-url', this.handleAPIGenerateUploadURL.bind(this));
     this.app.post('/api/s3/generate-download-url', this.handleAPIGenerateDownloadURL.bind(this));
+    this.app.post('/api/s3/download-to-neutral-base', this.handleAPIDownloadToNeutralBase.bind(this));
     this.app.get('/api/s3/metadata/:objectKey', this.handleAPIGetMetadata.bind(this));
     this.app.get('/api/s3/objects', this.handleAPIListObjects.bind(this));
     this.app.delete('/api/s3/objects/:objectKey', this.handleAPIDeleteObject.bind(this));
@@ -128,7 +129,12 @@ export class LocalS3Server {
         return;
       }
 
-      const result = await this.s3Service.generatePresignedUploadURL(filePath, storageType);
+      const result = await this.s3Service.generatePresignedUploadURL(
+        filePath,
+        storageType,
+        fileName,
+        contentType
+      );
 
       const statusCode = result.success ? HTTP_STATUS.OK : HTTP_STATUS.BAD_REQUEST;
       res.status(statusCode).json(result);
@@ -159,6 +165,33 @@ export class LocalS3Server {
       res.status(statusCode).json(result);
     } catch (error) {
       this.handleRouteError(res, error, 'generating download URL');
+    }
+  }
+
+
+  private async handleAPIDownloadToNeutralBase(
+    req: RequestWithBody<{ objectKey: string }>,
+    res: express.Response
+  ): Promise<void> {
+    try {
+      const { objectKey } = req.body;
+
+      if (!objectKey) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          error: 'Missing required field: objectKey'
+        });
+        return;
+      }
+
+      console.log(`[LocalS3Server] Downloading to neutral base: ${objectKey}`);
+
+      const result = await this.s3Service.downloadToNeutralBase(objectKey);
+
+      const statusCode = result.success ? HTTP_STATUS.OK : HTTP_STATUS.NOT_FOUND;
+      res.status(statusCode).json(result);
+    } catch (error) {
+      this.handleRouteError(res, error, 'downloading to neutral base');
     }
   }
 
@@ -243,12 +276,12 @@ export class LocalS3Server {
 
 
   private async handleS3PutObject(
-    req: RequestWithParams<ObjectKeyParams>,
+    req: express.Request,
     res: express.Response
   ): Promise<void> {
     try {
       const { objectKey } = req.params;
-      const metadata = req.body;
+      const metadata = req.body as any;
 
       if (!metadata || !metadata.filePath) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({

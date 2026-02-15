@@ -4,7 +4,7 @@ echo "=== Testing Paste Command with All Formats ==="
 echo ""
 
 # Path relative to tests directory
-CLI_PATH="../.build/release/AiPasteHelper"
+CLI_PATH="../.build/release/PasterHelper"
 
 # Test data
 TEST_DATA="Name\tAge\tCity\nJohn\t30\tNew York\nJane\t25\tLos Angeles\nBob\t35\tChicago"

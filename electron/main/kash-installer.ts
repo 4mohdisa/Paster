@@ -30,7 +30,7 @@ export class KashInstaller {
       : path.join(__dirname, '..', '..', 'resources', 'bin', 'uv');
 
     // Installation directory (user's home)
-    const userDataPath = path.join(app.getPath('home'), '.aipaste');
+    const userDataPath = path.join(app.getPath('home'), '.paster');
     this.kashEnvPath = path.join(userDataPath, 'kash-env');
 
     // Create directories if needed
@@ -162,7 +162,7 @@ export class KashInstaller {
   private async installKashWithPyApp(onProgress?: (progress: InstallProgress) => void): Promise<void> {
     return new Promise((resolve, reject) => {
       // Use uvx to run py-app-standalone to install kash-shell
-      // uvx py-app-standalone --source-only --force --target ~/.aipaste/kash-env --python-version 3.11 kash-shell
+      // uvx py-app-standalone --source-only --force --target ~/.paster/kash-env --python-version 3.11 kash-shell
       const args = [
         'tool', 'run',
         'py-app-standalone',
@@ -321,7 +321,7 @@ export class KashInstaller {
    * Save enabled actions to config file
    */
   public async saveEnabledActions(actions: string[]): Promise<void> {
-    const configPath = path.join(app.getPath('home'), '.aipaste', 'enabled-actions.json');
+    const configPath = path.join(app.getPath('home'), '.paster', 'enabled-actions.json');
     await fsPromises.writeFile(configPath, JSON.stringify({ actions }, null, 2));
   }
 
@@ -330,7 +330,7 @@ export class KashInstaller {
    */
   async getEnabledActions(): Promise<string[]> {
     try {
-      const configPath = path.join(app.getPath('home'), '.aipaste', 'enabled-actions.json');
+      const configPath = path.join(app.getPath('home'), '.paster', 'enabled-actions.json');
       const data = await fsPromises.readFile(configPath, 'utf8');
       const config = JSON.parse(data);
       return config.actions || [];

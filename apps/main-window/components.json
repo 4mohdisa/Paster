@@ -14,8 +14,8 @@
 		"components": "@/components",
 		"hooks": "@/hooks",
 		"lib": "@/lib",
-		"utils": "@aipaste/ui/lib/utils",
-		"ui": "@aipaste/ui/components"
+		"utils": "@paster/ui/lib/utils",
+		"ui": "@paster/ui/components"
 	},
 	"iconLibrary": "lucide"
 }

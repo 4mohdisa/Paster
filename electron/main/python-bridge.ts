@@ -37,7 +37,7 @@ export class PythonBridge extends EventEmitter {
   }
 
   private setupKashPaths(): void {
-    // Always prefer user-installed Kash in ~/.aipaste for both dev and prod
+    // Always prefer user-installed Kash in ~/.paster for both dev and prod
     const installer = new KashInstaller();
     let userKashPath = '';
     let userPythonPath = '';

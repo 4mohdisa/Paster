@@ -1,13 +1,13 @@
 # Convex Backend Functions
 
-This directory contains the Convex schema and functions for the AiPaste desktop app.
+This directory contains the Convex schema and functions for the Paster desktop app.
 
 ## Architecture
 
-AiPaste uses a **local-only Convex backend** for complete privacy and offline capability:
+Paster uses a **local-only Convex backend** for complete privacy and offline capability:
 - All data stays on the user's machine
 - No cloud dependencies or subscriptions
-- SQLite database stored in `~/Library/Application Support/@aipaste/`
+- SQLite database stored in `~/Library/Application Support/@paster/`
 
 ## Structure
 

@@ -1,7 +1,7 @@
 # /Users/alexboone/prototype/Github/next-electron/electron-builder.yml
 
-appId: com.aipaste.app
-productName: AiPaste
+appId: com.paster.app
+productName: Paster
 
 directories:
   buildResources: electron-build-assets
@@ -53,7 +53,7 @@ asarUnpack:
 afterSign: electron-build-assets/notarize.js
 
 win:
-  executableName: aipaste
+  executableName: paster
   # target: nsis
 nsis:
   artifactName: ${name}-${version}-setup.${ext}

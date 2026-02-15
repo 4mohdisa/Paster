@@ -1,5 +1,5 @@
 {
-  "name": "@aipaste/swift-cli",
+  "name": "@paster/swift-cli",
   "version": "1.0.0",
   "private": true,
   "description": "Native Swift CLI for clipboard formatting",

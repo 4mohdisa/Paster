@@ -1,5 +1,5 @@
 {
-  "name": "@aipaste/menubar",
+  "name": "@paster/menubar",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@aipaste/ui": "workspace:*",
+    "@paster/ui": "workspace:*",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "tailwindcss": "^4.1.7"

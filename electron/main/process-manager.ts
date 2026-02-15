@@ -707,7 +707,7 @@ export class ProcessManager extends EventEmitter {
         logError(`ProcessManager: Failed to download Convex binary: ${downloadError.message}`);
         this.emit('convex-error', {
           type: 'binary-missing',
-          message: 'Convex backend binary not found and could not be downloaded. Please run: pnpm --filter @aipaste/electron convex:download'
+          message: 'Convex backend binary not found and could not be downloaded. Please run: pnpm --filter @paster/electron convex:download'
         });
         return false;
       }

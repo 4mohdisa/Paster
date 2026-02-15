@@ -1,11 +1,11 @@
 "use client";
 
-import { cn } from "@aipaste/ui/lib/utils";
+import { cn } from "@paster/ui/lib/utils";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@aipaste/ui/components/tooltip";
+} from "@paster/ui/components/tooltip";
 import { MessageSquare, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

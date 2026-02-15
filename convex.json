@@ -1,6 +1,4 @@
 {
   "functions": "convex",
-  "node": {
-    "externalPackages": []
-  }
+  "generateCommonJSApi": true
 }

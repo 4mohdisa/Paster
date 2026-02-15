@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "AiPasteHelper",
+    name: "PasterHelper",
     platforms: [.macOS(.v12)],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.2.0"),
@@ -12,7 +12,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "AiPasteHelper",
+            name: "PasterHelper",
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "SwiftSoup", package: "SwiftSoup"),

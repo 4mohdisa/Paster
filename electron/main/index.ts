@@ -143,7 +143,7 @@ function setupTrayEvents(): void {
 }
 
 app.whenReady().then(async () => {
-  electronApp.setAppUserModelId('com.aipaste.app');
+  electronApp.setAppUserModelId('com.paster.app');
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window);

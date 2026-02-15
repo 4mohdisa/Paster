@@ -105,18 +105,17 @@ export class S3ServiceManager {
     }
   }
 
+  /**
+   * Generate presigned upload URL for browser-based uploads
+   * Doesn't require file to exist on filesystem - accepts virtual paths
+   */
   async generatePresignedUploadURL(
     filePath: string,
-    storageType: StorageType
+    storageType: StorageType,
+    fileName?: string,
+    contentType?: string
   ): Promise<GenerateUploadURLResponse> {
     try {
-      if (!ValidationUtils.isValidFilePath(filePath)) {
-        return {
-          success: false,
-          error: 'Invalid file path provided'
-        };
-      }
-
       if (!ValidationUtils.isValidStorageType(storageType)) {
         return {
           success: false,
@@ -124,34 +123,32 @@ export class S3ServiceManager {
         };
       }
 
-      if (!await FileSystemUtils.fileExists(filePath)) {
-        return {
-          success: false,
-          error: `File not found: ${filePath}`
-        };
-      }
-
+      // For browser uploads, filePath is virtual (e.g., "/uploads/file.png")
+      // Generate object key from virtual path
       const objectKey = ObjectKeyUtils.generateObjectKey(filePath);
-      const fileStats = await FileSystemUtils.getFileMetadata(filePath);
-      const mimeType = FileSystemUtils.getMimeType(fileStats.fileName || path.basename(filePath));
+      const finalFileName = fileName || path.basename(filePath);
+      const mimeType = contentType || FileSystemUtils.getMimeType(finalFileName);
 
+      // Create initial metadata (fileSize will be updated after upload)
       const metadata: FileMetadata = {
         objectKey,
-        filePath: path.resolve(filePath),
-        fileName: fileStats.fileName || path.basename(filePath),
-        fileSize: fileStats.fileSize || 0,
+        filePath: filePath,  // Keep virtual path for reference
+        fileName: finalFileName,
+        fileSize: 0,  // Will be updated after upload
         mimeType,
         createdAt: TimeUtils.getCurrentTimestamp(),
-        lastModified: fileStats.lastModified || TimeUtils.getCurrentTimestamp(),
+        lastModified: TimeUtils.getCurrentTimestamp(),
         storageType
       };
 
-          await this.saveObjectMetadata(objectKey, metadata);
+      await this.saveObjectMetadata(objectKey, metadata);
 
       // Generate URL
       const signedUrl = storageType === 'local'
         ? this.generateLocalUploadURL(objectKey)
         : await this.generateCloudUploadURL(objectKey, mimeType);
+
+      console.log(`[S3ServiceManager] Generated ${storageType} upload URL for ${finalFileName}`);
 
       return {
         success: true,
@@ -391,23 +388,101 @@ export class S3ServiceManager {
 
   async downloadToCache(objectKey: string): Promise<{ success: boolean; cachePath?: string; error?: string }> {
     try {
+      // 1. Check if already cached
       if (await this.isBinaryCached(objectKey)) {
         const cachePath = this.getBinaryCachePath(objectKey);
+        console.log(`[S3ServiceManager] File already cached: ${objectKey}`);
         return { success: true, cachePath };
       }
 
-      // TODO: Implement actual S3 download
-      // For now, this is a placeholder structure for Alex's download button experiment
-      console.log(`[S3ServiceManager] Download to cache requested for: ${objectKey}`);
+      console.log(`[S3ServiceManager] Starting download to cache: ${objectKey}`);
 
-      return {
-        success: false,
-        error: "Download functionality not yet implemented - placeholder for experiments"
-      };
+      // 2. Load metadata to get storage type
+      const metadata = await this.loadObjectMetadata(objectKey);
+      if (!metadata) {
+        return {
+          success: false,
+          error: `Metadata not found for object: ${objectKey}`
+        };
+      }
+
+      // 3. Generate presigned download URL
+      const downloadResult = await this.generatePresignedDownloadURL(objectKey, metadata.storageType);
+      if (!downloadResult.success || !downloadResult.signedUrl) {
+        return {
+          success: false,
+          error: downloadResult.error || 'Failed to generate download URL'
+        };
+      }
+
+      console.log(`[S3ServiceManager] Downloading from ${metadata.storageType} storage...`);
+
+      // 4. Fetch file content from presigned URL
+      const response = await fetch(downloadResult.signedUrl);
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `Download failed with status: ${response.status}`
+        };
+      }
+
+      const buffer = await response.arrayBuffer();
+      console.log(`[S3ServiceManager] Downloaded ${buffer.byteLength} bytes`);
+
+      // 5. Ensure cache directory exists
+      await FileSystemUtils.ensureDirectory(this.binaryCache);
+
+      // 6. Write to cache (always overwrite)
+      const cachePath = this.getBinaryCachePath(objectKey);
+      await fs.writeFile(cachePath, Buffer.from(buffer));
+
+      console.log(`[S3ServiceManager] File cached successfully: ${cachePath}`);
+
+      return { success: true, cachePath };
     } catch (error) {
+      console.error(`[S3ServiceManager] Download to cache error:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+
+  async downloadToNeutralBase(objectKey: string): Promise<{ success: boolean; path?: string; message?: string; error?: string }> {
+    try {
+      console.log(`[S3ServiceManager] Downloading file to neutral base: ${objectKey}`);
+
+      // Use the downloadToCache method to fetch and cache the file
+      const result = await this.downloadToCache(objectKey);
+
+      if (!result.success || !result.cachePath) {
+        return {
+          success: false,
+          error: result.error || 'Download failed',
+          message: 'Failed to download file to neutral base'
+        };
+      }
+
+      // Load metadata for additional info
+      const metadata = await this.loadObjectMetadata(objectKey);
+      const fileName = metadata?.fileName || 'unknown';
+      const fileSize = metadata?.fileSize || 0;
+      const sizeMB = (fileSize / (1024 * 1024)).toFixed(2);
+
+      console.log(`[S3ServiceManager] File downloaded successfully: ${result.cachePath}`);
+
+      return {
+        success: true,
+        path: result.cachePath,
+        message: `File '${fileName}' (${sizeMB} MB) downloaded to neutral base`
+      };
+    } catch (error) {
+      console.error(`[S3ServiceManager] Download to neutral base error:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to download file to neutral base'
       };
     }
   }
@@ -466,7 +541,7 @@ export class S3ServiceManager {
     if (!this.cloudStorageEnabled || !this.r2Service) {
       if (this.cloudStorageFallback) {
         console.warn('[S3ServiceManager] Cloud storage unavailable, falling back to local');
-        return this.generateLocalUploadURL(objectKey, contentType);
+        return this.generateLocalUploadURL(objectKey);
       }
       throw new Error('Cloud storage not available');
     }
@@ -481,7 +556,7 @@ export class S3ServiceManager {
       // Automatic fallback to local storage if enabled
       if (this.cloudStorageFallback) {
         console.warn('[S3ServiceManager] Falling back to local storage');
-        return this.generateLocalUploadURL(objectKey, contentType);
+        return this.generateLocalUploadURL(objectKey);
       }
 
       throw error;

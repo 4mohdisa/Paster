@@ -32,7 +32,7 @@ export class TrayManager extends EventEmitter {
         this.tray = new Tray(trayIcon);
       }
 
-      this.tray.setToolTip('AiPaste - Smart Clipboard Manager');
+      this.tray.setToolTip('Paster - Smart Clipboard Manager');
 
       // Build context menu
       this.buildContextMenu();
@@ -78,7 +78,7 @@ export class TrayManager extends EventEmitter {
   private buildContextMenu(): void {
     const menuTemplate: Electron.MenuItemConstructorOptions[] = [
       {
-        label: 'Show AiPaste',
+        label: 'Show Paster',
         click: () => {
           this.emit('show-main-window');
         }
@@ -146,13 +146,13 @@ export class TrayManager extends EventEmitter {
       },
       { type: 'separator' },
       {
-        label: 'About AiPaste',
+        label: 'About Paster',
         click: () => {
           this.emit('show-about');
         }
       },
       {
-        label: 'Quit AiPaste',
+        label: 'Quit Paster',
         accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
         click: () => {
           this.emit('quit-app');

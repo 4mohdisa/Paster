@@ -1,10 +1,10 @@
 {
-  "name": "@aipaste/electron",
+  "name": "@paster/electron",
   "version": "0.0.1",
   "private": true,
   "main": "build/main/index.js",
   "scripts": {
-    "predev": "pkill -f 'electron-aipaste/node_modules/.*/Electron\\.app.*/MacOS/Electron' 2>/dev/null || true; pkill -f 'electron-aipaste/native/swift-cli/.build/.*/AiPasteHelper' 2>/dev/null || true; rm -f \"$HOME/Library/Application Support/@aipaste/electron/SingletonLock\" 2>/dev/null || true",
+    "predev": "pkill -f 'paster/node_modules/.*/Electron\\.app.*/MacOS/Electron' 2>/dev/null || true; pkill -f 'paster/native/swift-cli/.build/.*/PasterHelper' 2>/dev/null || true; rm -f \"$HOME/Library/Application Support/@paster/electron/SingletonLock\" 2>/dev/null || true",
     "dev": "concurrently --names \"build,app\" --prefix-colors \"blue,green\" \"tsup --watch\" \"nodemon\"",
     "build": "tsup",
     "swift:build": "cd ../native/swift-cli && swift build -c release",
@@ -25,7 +25,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@aipaste/typescript-config": "workspace:*",
+    "@paster/typescript-config": "workspace:*",
     "@electron-toolkit/tsconfig": "^1.0.1",
     "@types/node": "^22.15.18",
     "@types/uuid": "^10.0.0",

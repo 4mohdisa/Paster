@@ -3,7 +3,7 @@
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 import { useEffect, useState } from 'react';
-import { toast } from '@aipaste/ui/components/sonner';
+import { toast } from '@paster/ui/components/sonner';
 
 export interface ClipboardHistoryItem {
   _id: string;
@@ -28,7 +28,6 @@ export function useClipboardHistory() {
   // Listen for Convex ready event
   useEffect(() => {
     const handleConvexReady = () => {
-      console.log('Convex is ready, enabling queries');
       setIsConvexReady(true);
     };
 

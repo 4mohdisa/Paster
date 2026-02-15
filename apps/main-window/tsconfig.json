@@ -1,12 +1,12 @@
 {
-  "extends": "@aipaste/typescript-config/nextjs.json",
+  "extends": "@paster/typescript-config/nextjs.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
       "@/*": [
         "./src/*"
       ],
-      "@aipaste/ui/*": [
+      "@paster/ui/*": [
         "../../packages/ui/src/*"
       ]
     },

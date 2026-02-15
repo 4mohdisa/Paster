@@ -105,7 +105,7 @@ async function main() {
     const latestUrl = 'https://api.github.com/repos/get-convex/convex-backend/releases/latest';
 
     const releaseInfo = await new Promise((resolve, reject) => {
-      https.get(latestUrl, { headers: { 'User-Agent': 'electron-aipaste' } }, (res) => {
+      https.get(latestUrl, { headers: { 'User-Agent': 'electron-paster' } }, (res) => {
         if (res.statusCode !== 200) {
           let errorData = '';
           res.on('data', chunk => errorData += chunk);

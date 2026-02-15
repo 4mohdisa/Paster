@@ -9,7 +9,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@aipaste/ui": path.resolve(__dirname, "../../packages/ui/src")
+      "@paster/ui": path.resolve(__dirname, "../../packages/ui/src")
     }
   },
 });

@@ -3,7 +3,7 @@
 /* Source files to scan for Tailwind classes */
 @source "../src/**/*.{ts,tsx}";
 @source "../index.html";
-@source "../node_modules/@aipaste/ui/src/**/*.{ts,tsx}";
+@source "../node_modules/@paster/ui/src/**/*.{ts,tsx}";
 
 /* Import the UI styles after setting up sources */
-@import "../node_modules/@aipaste/ui/src/styles/globals.css" source(none)
+@import "../node_modules/@paster/ui/src/styles/globals.css" source(none)

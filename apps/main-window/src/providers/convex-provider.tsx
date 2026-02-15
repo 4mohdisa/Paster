@@ -2,7 +2,7 @@
 
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import { ReactNode, useEffect, useState } from 'react';
-import { toast } from '@aipaste/ui/components/sonner';
+import { toast } from '@paster/ui/components/sonner';
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
   const [client, setClient] = useState<ConvexReactClient | null>(null);
@@ -32,7 +32,7 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
     const initializeConvex = async () => {
       const MAX_RETRIES = 10;
       const RETRY_DELAY = 2000; // 2 seconds between retries
-      const BACKEND_URL = 'http://127.0.0.1:52100';
+      const BACKEND_URL = 'http://127.0.0.1:3210';
       
       let retryCount = 0;
       let connected = false;
@@ -54,13 +54,11 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
             connected = true;
             
             toast.success('Connected to Convex backend', { id: toastId });
-            console.log('Convex backend connected successfully');
           } else {
             throw new Error('Backend not responding');
           }
         } catch (err: any) {
           retryCount++;
-          console.log(`Convex connection attempt ${retryCount}/${MAX_RETRIES} failed`);
           
           if (retryCount >= MAX_RETRIES) {
             // Final failure
@@ -81,14 +79,10 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Listen for Convex events
-    const handleConvexReady = (event: any, info: any) => {
-      console.log('Convex backend ready:', info);
-      if (info.backendUrl && !client) {
-        const convexClient = new ConvexReactClient(info.backendUrl);
-        setClient(convexClient);
-        setError(null);
-      }
+    // Listen for Convex events - use the configured BACKEND_URL instead of
+    // the Electron-provided URL, since functions are deployed to the dev server
+    const handleConvexReady = (_event: any, _info: any) => {
+      // Don't override - let initializeConvex handle connection with correct URL
     };
 
     const handleConvexError = (event: any, error: any) => {
@@ -124,7 +118,6 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
 
   // If no client but ready, render children without Convex (offline mode)
   if (!client) {
-    console.warn('Running without Convex backend (offline mode)');
     return <>{children}</>;
   }
 

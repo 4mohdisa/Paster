@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>S3 Manager</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Logs Screen (Hidden by default) -->
+    <div class="logs-screen" id="logsScreen">
+        <div class="logs-header">
+            <div class="logs-title">System Logs</div>
+            <div class="logs-controls">
+                <button onclick="exportLogs()">Export</button>
+                <button onclick="clearLogs()" class="secondary">Clear</button>
+                <button onclick="toggleLogs()" class="secondary">Close</button>
+            </div>
+        </div>
+        <div class="logs-filters">
+            <button class="filter-btn active" data-filter="all" onclick="filterLogs('all')">All</button>
+            <button class="filter-btn" data-filter="info" onclick="filterLogs('info')">Info</button>
+            <button class="filter-btn" data-filter="success" onclick="filterLogs('success')">Success</button>
+            <button class="filter-btn" data-filter="warning" onclick="filterLogs('warning')">Warning</button>
+            <button class="filter-btn" data-filter="error" onclick="filterLogs('error')">Error</button>
+            <div style="margin-left: auto; color: #9ca3af; font-size: 11px; display: flex; align-items: center;">
+                <span id="logCount">0 logs</span>
+            </div>
+        </div>
+        <div class="logs-content" id="logsContent">
+            <div style="color: #6b7280; text-align: center; padding: 40px;">
+                Waiting for logs...
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo" id="logo" onclick="handleLogoClick()">
+                <span>S3</span> Manager
+            </div>
+
+            <div class="stats-section">
+                <div class="stats-card">
+                    <div class="stat-label">Your files</div>
+                    <div class="stat-value" id="totalFiles">0</div>
+                </div>
+
+                <div class="stats-card">
+                    <div class="stat-label">On this device</div>
+                    <div class="stat-value" id="localFiles">0</div>
+                </div>
+
+                <div class="stats-card">
+                    <div class="stat-label">In the cloud</div>
+                    <div class="stat-value" id="cloudFiles">0</div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button onclick="triggerUpload()">Upload something</button>
+                <button class="secondary" onclick="generateTestFile()">Generate Test File</button>
+                <button class="secondary" onclick="refreshAll()">Refresh</button>
+                <button class="secondary" onclick="migrateToCloud()">Migrate to Cloud</button>
+                <button class="secondary" onclick="toggleLogs()">View Logs</button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <h1>Your storage space</h1>
+                <div class="header-subtitle">Everything you've uploaded, right here</div>
+                <div class="status-badge">
+                    <div class="status-dot"></div>
+                    All systems running smoothly
+                </div>
+            </div>
+
+            <div class="content-area">
+                <!-- Upload Section -->
+                <div class="section">
+                    <div class="upload-area" onclick="triggerUpload()" id="uploadArea">
+                        <div class="upload-icon">&#9729;</div>
+                        <div class="upload-text">Drop your files here, or click to browse</div>
+                        <div class="upload-hint">We'll store small files on your device and bigger ones in the cloud.<br>It's automatic, so you don't have to think about it.</div>
+                    </div>
+                    <div class="progress-container" id="progressContainer">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">Working on it...</div>
+                    </div>
+                </div>
+
+                <!-- Files Section -->
+                <div class="section">
+                    <div class="section-title">Recent uploads</div>
+                    <input type="text" class="search-bar" id="searchBar" placeholder="Search your files..." onkeyup="filterFiles()">
+                    <div class="file-list" id="fileList">
+                        <div class="empty-state">
+                            <div class="empty-icon">&#128194;</div>
+                            <div>Nothing here yet. Upload something to get started!</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" onchange="handleFileUpload(this.files[0])" />
+
+    <!-- File Details Modal -->
+    <div id="fileDetailsModal" class="file-details-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">File Details</h2>
+                <button id="closeDetailsModal" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-row">
+                    <div class="detail-label">File Name</div>
+                    <div class="detail-value" id="detailFileName"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Object Key</div>
+                    <div class="detail-value highlight" id="detailObjectKey"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">File Size</div>
+                    <div class="detail-value" id="detailFileSize"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Storage Type</div>
+                    <div class="detail-value" id="detailStorageType"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">MIME Type</div>
+                    <div class="detail-value highlight" id="detailMimeType"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Upload Time</div>
+                    <div class="detail-value" id="detailTimestamp"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Database ID</div>
+                    <div class="detail-value highlight" id="detailId"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -8,7 +8,7 @@ const os = require('os');
 const isWindows = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
 
-console.log('🧹 AiPaste Fresh Start - Cleaning all temporary files and caches...\n');
+console.log('🧹 Paster Fresh Start - Cleaning all temporary files and caches...\n');
 
 // Paths to clean
 const projectRoot = path.join(__dirname, '..');
@@ -52,7 +52,7 @@ const cleanPaths = [
   'logs',
 
   // Settings file (for development)
-  '.aipaste-settings.json',
+  '.paster-settings.json',
 ];
 
 // User data paths (platform specific)
@@ -60,30 +60,30 @@ const userDataPaths = [];
 
 if (isMac) {
   userDataPaths.push(
-    path.join(os.homedir(), 'Library', 'Application Support', 'AiPaste'),
-    path.join(os.homedir(), 'Library', 'Application Support', 'AiPaste', 'aipaste-convex-db'),
-    path.join(os.homedir(), 'Library', 'Application Support', 'AiPaste', 'Local Storage'),  // This clears localStorage
-    path.join(os.homedir(), 'Library', 'Application Support', 'AiPaste', 'settings.json'),  // Production settings file
-    path.join(os.homedir(), 'Library', 'Caches', 'AiPaste'),
-    path.join(os.homedir(), 'Library', 'Logs', 'AiPaste'),
-    path.join(os.homedir(), 'Library', 'Preferences', 'com.aipaste.app.plist'),
+    path.join(os.homedir(), 'Library', 'Application Support', 'Paster'),
+    path.join(os.homedir(), 'Library', 'Application Support', 'Paster', 'paster-convex-db'),
+    path.join(os.homedir(), 'Library', 'Application Support', 'Paster', 'Local Storage'),  // This clears localStorage
+    path.join(os.homedir(), 'Library', 'Application Support', 'Paster', 'settings.json'),  // Production settings file
+    path.join(os.homedir(), 'Library', 'Caches', 'Paster'),
+    path.join(os.homedir(), 'Library', 'Logs', 'Paster'),
+    path.join(os.homedir(), 'Library', 'Preferences', 'com.paster.app.plist'),
     // KASH (CLI-style data under home)
-    path.join(os.homedir(), '.aipaste'),
-    path.join(os.homedir(), '.aipaste', 'kash-env'),
-    path.join(os.homedir(), '.aipaste', 'kash-workspace'),
-    path.join(os.homedir(), '.aipaste', 'enabled-actions.json')
+    path.join(os.homedir(), '.paster'),
+    path.join(os.homedir(), '.paster', 'kash-env'),
+    path.join(os.homedir(), '.paster', 'kash-workspace'),
+    path.join(os.homedir(), '.paster', 'enabled-actions.json')
   );
 } else if (isWindows) {
   userDataPaths.push(
-    path.join(os.homedir(), 'AppData', 'Roaming', '@aipaste'),
-    path.join(os.homedir(), 'AppData', 'Local', '@aipaste'),
+    path.join(os.homedir(), 'AppData', 'Roaming', '@paster'),
+    path.join(os.homedir(), 'AppData', 'Local', '@paster'),
   );
 } else {
   // Linux
   userDataPaths.push(
-    path.join(os.homedir(), '.config', '@aipaste'),
-    path.join(os.homedir(), '.cache', '@aipaste'),
-    path.join(os.homedir(), '.local', 'share', '@aipaste')
+    path.join(os.homedir(), '.config', '@paster'),
+    path.join(os.homedir(), '.cache', '@paster'),
+    path.join(os.homedir(), '.local', 'share', '@paster')
   );
 }
 
@@ -166,17 +166,17 @@ console.log('📋 Stopping running processes...');
 try {
   if (isMac || !isWindows) {
     // Kill Electron processes
-    execSync("pkill -f 'electron-aipaste/node_modules/.*/Electron' 2>/dev/null || true", { stdio: 'ignore' });
+    execSync("pkill -f 'paster/node_modules/.*/Electron' 2>/dev/null || true", { stdio: 'ignore' });
     // Kill Swift CLI processes
-    execSync("pkill -f 'AiPasteHelper' 2>/dev/null || true", { stdio: 'ignore' });
+    execSync("pkill -f 'PasterHelper' 2>/dev/null || true", { stdio: 'ignore' });
     // Kill node processes related to the project
-    execSync("pkill -f 'aipaste' 2>/dev/null || true", { stdio: 'ignore' });
+    execSync("pkill -f 'paster' 2>/dev/null || true", { stdio: 'ignore' });
     // Kill Convex backend
     execSync("pkill -f 'convex-local-backend' 2>/dev/null || true", { stdio: 'ignore' });
   } else {
     // Windows commands
     execSync('taskkill /F /IM electron.exe 2>NUL || exit 0', { stdio: 'ignore' });
-    execSync('taskkill /F /IM AiPasteHelper.exe 2>NUL || exit 0', { stdio: 'ignore' });
+    execSync('taskkill /F /IM PasterHelper.exe 2>NUL || exit 0', { stdio: 'ignore' });
     execSync('taskkill /F /IM convex-local-backend.exe 2>NUL || exit 0', { stdio: 'ignore' });
   }
   console.log('  ✓ Stopped all processes\n');

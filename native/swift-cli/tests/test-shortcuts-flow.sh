@@ -4,7 +4,7 @@ echo "=== Testing Complete Shortcuts → Paste Flow ==="
 echo ""
 
 # Path relative to tests directory
-CLI_PATH="../.build/release/AiPasteHelper"
+CLI_PATH="../.build/release/PasterHelper"
 
 # 1. Verify accessibility permission
 echo "1. Checking accessibility permission..."

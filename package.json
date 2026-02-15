@@ -1,16 +1,17 @@
 {
-  "name": "aipaste",
+  "name": "paster",
   "version": "1.0.0",
   "private": true,
+  "author": "Mohammed Isa",
   "scripts": {
-    "postinstall": "pnpm --filter @aipaste/electron convex:download",
-    "dev": "concurrently --names \"electron,main-window,menubar\" --prefix-colors \"blue,green,magenta\" \"pnpm --filter @aipaste/electron dev\" \"pnpm --filter @aipaste/main-window dev\" \"pnpm --filter @aipaste/menubar dev\"",
+    "postinstall": "pnpm --filter @paster/electron convex:download",
+    "dev": "concurrently --names \"electron,main-window,menubar\" --prefix-colors \"blue,green,magenta\" \"pnpm --filter @paster/electron dev\" \"pnpm --filter @paster/main-window dev\" \"pnpm --filter @paster/menubar dev\"",
     "dev:fresh": "pnpm fresh && pnpm dev",
-    "build": "pnpm embed:uv && pnpm build:swift && pnpm --filter @aipaste/main-window build && pnpm --filter @aipaste/menubar build && pnpm --filter @aipaste/electron build",
+    "build": "pnpm embed:uv && pnpm build:swift && pnpm --filter @paster/main-window build && pnpm --filter @paster/menubar build && pnpm --filter @paster/electron build",
     "embed:uv": "node scripts/embed-uv.js",
     "build:swift": "cd native/swift-cli && swift build -c release",
-    "dist": "pnpm build && pnpm --filter @aipaste/electron dist",
-    "dist:prod": "pnpm build && pnpm --filter @aipaste/electron dist:prod",
+    "dist": "pnpm build && pnpm --filter @paster/electron dist",
+    "dist:prod": "pnpm build && pnpm --filter @paster/electron dist:prod",
     "typecheck": "pnpm run --parallel typecheck",
     "lint": "pnpm run --parallel lint",
     "clean": "pnpm run --parallel clean",
@@ -18,7 +19,8 @@
     "clean:kash": "rm -rf electron/resources/kash-env",
     "fresh": "node scripts/fresh.js",
     "convex:dev": "source .env.local && npx convex dev --url http://127.0.0.1:52100 --admin-key $CONVEX_ADMIN_KEY",
-    "convex:deploy": "source .env.local && npx convex deploy --url http://127.0.0.1:52100 --admin-key $CONVEX_ADMIN_KEY"
+    "convex:deploy": "source .env.local && npx convex deploy --url http://127.0.0.1:52100 --admin-key $CONVEX_ADMIN_KEY",
+    "s3-manager": "cd apps/s3-manager && npx electron ."
   },
   "devDependencies": {
     "concurrently": "^9.2.0",

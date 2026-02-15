@@ -1,11 +1,11 @@
 "use client";
 
-import { Alert, AlertDescription } from '@aipaste/ui/components/alert';
-import { Button } from '@aipaste/ui/components/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@aipaste/ui/components/card';
+import { Alert, AlertDescription } from '@paster/ui/components/alert';
+import { Button } from '@paster/ui/components/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@paster/ui/components/card';
 import { ArrowRight, CheckCircle, Clipboard, Download, FileText, Keyboard, Loader2, Shield, XCircle, Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { toast } from '@aipaste/ui/components/sonner';
+import { toast } from '@paster/ui/components/sonner';
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -151,7 +151,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               <div className="mx-auto mb-4 p-4 bg-primary/10 rounded-full w-fit">
                 <Clipboard className="h-12 w-12 text-primary" />
               </div>
-              <CardTitle className="text-3xl font-bold">Welcome to AiPaste</CardTitle>
+              <CardTitle className="text-3xl font-bold">Welcome to Paster</CardTitle>
               <CardDescription className="text-lg mt-2">
                 Transform your spreadsheet data into perfectly formatted tables with a single shortcut
               </CardDescription>
@@ -201,14 +201,14 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             <CardHeader>
               <CardTitle className="text-2xl">Permission Required</CardTitle>
               <CardDescription>
-                AiPaste needs accessibility permission to monitor keyboard shortcuts
+                Paster needs accessibility permission to monitor keyboard shortcuts
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <Alert>
                 <Shield className="h-4 w-4" />
                 <AlertDescription>
-                  macOS requires your permission to allow AiPaste to monitor keyboard shortcuts.
+                  macOS requires your permission to allow Paster to monitor keyboard shortcuts.
                   This is only used to detect when you press Cmd+Shift+V.
                 </AlertDescription>
               </Alert>
@@ -255,7 +255,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                   </Button>
 
                   <p className="text-sm text-muted-foreground text-center">
-                    A system dialog will appear. Please grant permission to AiPaste.
+                    A system dialog will appear. Please grant permission to Paster.
                   </p>
                 </div>
               ) : (
@@ -442,12 +442,12 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               </div>
               <CardTitle className="text-3xl font-bold">You're All Set!</CardTitle>
               <CardDescription className="text-lg mt-2">
-                AiPaste is now running and ready to format your tables
+                Paster is now running and ready to format your tables
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                <p className="font-medium">How to use AiPaste:</p>
+                <p className="font-medium">How to use Paster:</p>
                 <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
                   <li>Copy data from Excel, Google Sheets, or any spreadsheet</li>
                   <li>Press <strong>Cmd+Shift+V</strong> to paste as a formatted table</li>

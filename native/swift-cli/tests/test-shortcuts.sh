@@ -1,10 +1,10 @@
 #!/bin/bash
 
-echo "=== AiPaste CLI Quick Test Suite ==="
+echo "=== Paster CLI Quick Test Suite ==="
 echo ""
 
 # Path relative to tests directory
-CLI_PATH="../.build/release/AiPasteHelper"
+CLI_PATH="../.build/release/PasterHelper"
 
 # Check if binary exists
 if [ ! -f "$CLI_PATH" ]; then

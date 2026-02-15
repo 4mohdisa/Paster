@@ -1,7 +1,7 @@
 'use client';
 
-import { Alert, AlertDescription } from '@aipaste/ui/components/alert';
-import { toast } from '@aipaste/ui/components/sonner';
+import { Alert, AlertDescription } from '@paster/ui/components/alert';
+import { toast } from '@paster/ui/components/sonner';
 import { useQuery } from 'convex/react';
 import { CheckCircle, Clock, FileText, XCircle } from 'lucide-react';
 import { useState } from 'react';

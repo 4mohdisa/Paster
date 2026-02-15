@@ -1,69 +1,63 @@
-# React + TypeScript + Vite
+# Menubar
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A lightweight popup window attached to the system tray icon. Built with Vite and React 19, it provides quick-access actions without opening the full dashboard.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Vite** 7.1 with SWC
+- **React** 19
+- **TypeScript** 5.8
+- **Tailwind CSS** 4.1
+- **@paster/ui** shared component library
 
-## Expanding the ESLint configuration
+## Features
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Two action buttons:
+- **Dashboard** — Opens the main application window
+- **Quit Paster** — Exits the application
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Structure
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+├── App.tsx           # Main component with action buttons
+├── main.tsx          # React entry point
+├── index.css         # Tailwind imports
+├── electron.d.ts     # IPC type definitions
+└── vite-env.d.ts     # Vite types
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## IPC Communication
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Channel | Purpose |
+|---------|---------|
+| `menubar:show-main-window` | Opens dashboard, hides menubar |
+| `menubar:quit-app` | Terminates the application |
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Window Behavior
+
+- **Size**: 200 x 90px
+- **Frameless**: No title bar or window chrome
+- **Always on top**: Stays above other windows
+- **Auto-hide**: Closes when clicking outside
+- **Platform-specific**: macOS vibrancy effect, Windows transparent background
+
+## Development
+
+```bash
+# From monorepo root (runs alongside Electron and main-window)
+pnpm dev
+
+# Standalone
+cd apps/menubar && pnpm dev
 ```
+
+Runs on `http://localhost:5173` in development. The Electron menubar window loads this URL directly.
+
+## Build
+
+```bash
+pnpm build   # Vite production build
+```
+
+Built output is loaded from `app/menubar/dist/index.html` in production.

@@ -26,7 +26,7 @@ def docx_to_markdown(item: Item) -> Item:
     elif item.store_path:
         # For FileStore items, we need to resolve the full path
         # The store_path is relative to the workspace
-        workspace_dir = Path.home() / '.aipaste' / 'kash-workspace'
+        workspace_dir = Path.home() / '.paster' / 'kash-workspace'
         file_path = workspace_dir / item.store_path
     
     if not file_path:

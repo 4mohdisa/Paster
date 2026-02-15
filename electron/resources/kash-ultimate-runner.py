@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Ultimate Kash Runner for AiPaste - UNIFIED VERSION
+Ultimate Kash Runner for Paster - UNIFIED VERSION
 Handles both built-in Kash actions and custom actions
 """
 
@@ -58,7 +58,7 @@ def initialize_filestore():
     # Import inside function to delay until we're in record_console context
     from kash.file_storage.file_store import FileStore
 
-    workspace_dir = Path.home() / '.aipaste' / 'kash-workspace'
+    workspace_dir = Path.home() / '.paster' / 'kash-workspace'
     workspace_dir.mkdir(parents=True, exist_ok=True)
 
     # Suppress any output during FileStore initialization

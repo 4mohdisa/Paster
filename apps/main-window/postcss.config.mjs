@@ -1,1 +1,1 @@
-export { default } from "@aipaste/ui/src/postcss.config.mjs";
+export { default } from "@paster/ui/src/postcss.config.mjs";

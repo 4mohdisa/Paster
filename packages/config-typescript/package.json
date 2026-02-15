@@ -1,5 +1,5 @@
 {
-  "name": "@aipaste/typescript-config",
+  "name": "@paster/typescript-config",
   "version": "0.0.0",
   "private": true,
   "files": ["*.json"]

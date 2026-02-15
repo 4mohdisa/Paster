@@ -1,6 +1,6 @@
 
 
-import { Button } from '@aipaste/ui/components/button';
+import { Button } from '@paster/ui/components/button';
 
 function App() {
   const handleShowDashboard = () => {
@@ -25,7 +25,7 @@ function App() {
         className="w-full justify-start text-destructive hover:text-destructive"
         onClick={handleQuit}
       >
-        Quit AiPaste
+        Quit Paster
       </Button>
     </div>
   );

@@ -36,12 +36,12 @@ export class PathConfig {
         'swift-cli',
         '.build',
         'release',
-        'AiPasteHelper'
+        'PasterHelper'
       );
     }
     
     // In production, binary is bundled in resources
-    return path.join(process.resourcesPath, 'bin', 'AiPasteHelper');
+    return path.join(process.resourcesPath, 'bin', 'PasterHelper');
   }
   
   /**
@@ -109,7 +109,7 @@ export class PathConfig {
       return path.join(app.getAppPath(), '.convex-dev-db');
     }
     // User's app data directory for production - persistent
-    return path.join(app.getPath('userData'), 'aipaste-convex-db');
+    return path.join(app.getPath('userData'), 'paster-convex-db');
   }
   
   /**

@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  transpilePackages: ['@aipaste/ui'],
+  transpilePackages: ['@paster/ui'],
 };
 
 export default nextConfig;

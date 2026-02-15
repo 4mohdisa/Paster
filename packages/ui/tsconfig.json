@@ -1,11 +1,11 @@
 {
-  "extends": "@aipaste/typescript-config/react-library.json",
+  "extends": "@paster/typescript-config/react-library.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": ".",
     "paths": {
-      "@aipaste/ui/*": ["./src/*"]
+      "@paster/ui/*": ["./src/*"]
     }
   },
   "include": ["src/**/*"],

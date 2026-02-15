@@ -1,272 +1,124 @@
-# 🚀 Electron + React + Tailwind CSS Template
+# Live App
 
-A modern, production-ready template for building cross-platform desktop applications with Electron, React 19, TypeScript, and Tailwind CSS v4.
+A standalone Electron application for AI-powered file processing and conversation. Uses Google Gemini for multimodal analysis of images, PDFs, audio, video, and web content. Includes cloud storage integration with S3 and Cloudflare R2.
 
-## ✨ Features
+## Tech Stack
 
-- **⚡ Electron 37** - Latest stable version with modern APIs
-- **⚛️ React 19** - Latest React with concurrent features
-- **🎨 Tailwind CSS v4** - Latest version with improved performance
-- **📝 TypeScript** - Full type safety and better developer experience
-- **🔧 Electron Forge** - Complete build and packaging solution
-- **📦 Webpack** - Optimized bundling with hot reload
-- **🎯 ESLint** - Code quality and consistency
-- **📱 Cross-platform** - Build for Windows, macOS, and Linux
+- **Electron** 37.2 with Electron Forge
+- **React** 19 with TypeScript
+- **Vite** 5.1 (via Electron Forge plugin)
+- **Tailwind CSS** 4.1
+- **Google Gemini AI** (`@google/generative-ai`)
+- **AWS SDK** (S3 client for local storage and R2)
+- **Pipecat AI** (voice/multimodal interaction)
+- **WebSocket** (Chrome extension communication)
 
-## 🛠️ Tech Stack
+## Features
 
-- **Electron**: 37.2.0
-- **React**: 19.1.0
-- **TypeScript**: 4.5.4
-- **Tailwind CSS**: 4.1.11
-- **Electron Forge**: 7.8.1
-- **Webpack**: Latest with optimized configuration
+### Global Hotkeys
+| Shortcut | Action |
+|----------|--------|
+| `Cmd+Shift+X` | Capture selected files from Finder |
+| `Cmd+Shift+N` | Toggle window visibility |
+| `Cmd+Shift+A` | Toggle audio recording |
+| `Cmd+Shift+S` | Toggle screen recording |
+| `Cmd+Shift+M` | Turn off all media |
 
-## 🚀 Quick Start
+### File Processing
+Analyzes files using Google Gemini AI:
+- **Images** — Description and content analysis
+- **PDFs** — Text extraction and summarization
+- **Audio** — Transcription with timestamps
+- **Video** — Frame extraction and analysis
+- **Text** — Content analysis
+- **YouTube** — Metadata, title, and transcript extraction
+- **Webpages** — Content extraction and summarization
 
-### Prerequisites
+### Media Recording
+- Audio capture with timestamp synchronization
+- Screen recording with frame capture
+- Timeline-intelligent audio/video stitching
 
-- Node.js 18+ 
-- npm or yarn
-- Git
+### S3 Cloud Storage
+- Local S3 server on port 9000 for development
+- Cloudflare R2 for production cloud storage
+- Presigned URLs for secure file transfers
+- File metadata tracking via Convex
 
-### Installation
+### Chrome Extension Integration
+- WebSocket server on `localhost:30010`
+- Receives browser tab data (URLs, page content)
+- Processes YouTube videos and webpages
 
-1. **Clone the template**
-   ```bash
-   git clone https://github.com/Mohammed-Yasin-Mulla/Electron-Tailwindv4-React-Template.git
-   cd Electron-Tailwindv4-React-Template
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Start development server**
-   ```bash
-   npm start
-   ```
-
-## 📁 Project Structure
+## Structure
 
 ```
-├── src/
-│   ├── App.tsx              # Main React component
-│   ├── index.css            # Tailwind CSS imports
-│   ├── index.html           # HTML shell
-│   ├── renderer.ts          # Electron renderer entry
-│   ├── main.ts              # Electron main process
-│   └── preload.ts           # Preload scripts
-├── webpack.*.ts             # Webpack configurations
-├── forge.config.ts          # Electron Forge config
-├── tsconfig.json            # TypeScript config
-├── postcss.config.mjs       # PostCSS config for Tailwind
-└── package.json             # Dependencies and scripts
+src/
+├── index.ts                  # Electron main process
+├── app.tsx                   # React root component
+├── preload.ts                # Secure IPC bridge
+├── renderer.ts               # Renderer entry point
+├── components/
+│   ├── ChatContiner.tsx      # Main chat interface
+│   ├── MessageList.tsx       # Message rendering
+│   ├── Message.tsx           # Message component
+│   ├── pipecat-comp/         # Voice AI integration
+│   └── shadcn/               # UI components
+├── file-processing/
+│   ├── index.ts              # FileProcessingService
+│   ├── core/
+│   │   ├── gemini-client.ts  # Google AI integration
+│   │   ├── status-manager.ts # Processing state tracking
+│   │   └── file-utils.ts     # File system operations
+│   └── processors/
+│       ├── image-processor.ts
+│       ├── pdf-processor.ts
+│       ├── audio-video-processor.ts
+│       ├── text-processor.ts
+│       ├── youtube-processor.ts
+│       └── webpage-processor.ts
+├── s3-service/
+│   ├── S3ServiceManager.ts   # Core S3 operations
+│   ├── LocalS3Server.ts      # Express dev server
+│   ├── R2Service.ts          # Cloudflare R2 integration
+│   ├── S3Types.ts            # Type definitions
+│   └── S3Utils.ts            # Utilities
+└── types/
+    └── electron-api.ts       # Electron API types
 ```
 
-## 🎯 Available Scripts
+## Prerequisites
 
-| Command | Description |
-|---------|-------------|
-| `npm start` | Start development server with hot reload |
-| `npm run package` | Package the app for distribution |
-| `npm run make` | Create distributables for all platforms |
-| `npm run publish` | Build and publish to distribution platforms |
-| `npm run lint` | Run ESLint for code quality |
+- Node.js 18+
+- Google Gemini API key
 
-## 🎨 Styling with Tailwind CSS
+## Setup
 
-This template uses **Tailwind CSS v4** with the new `@import "tailwindcss"` syntax:
+Create a `.env` file in this directory:
 
-```css
-/* src/index.css */
-@import "tailwindcss";
+```env
+GOOGLE_API_KEY=your_gemini_api_key
 
-/* Your custom styles here */
+# Optional — for S3/R2 cloud storage
+CONVEX_URL=https://your-convex-deployment.convex.cloud
+CONVEX_ADMIN_KEY=your_admin_key
 ```
 
-### Example Component
-
-```tsx
-import React from 'react';
-
-const MyComponent: React.FC = () => {
-  return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">
-          Hello Electron + React + Tailwind!
-        </h1>
-        <button className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded transition-colors">
-          Click me!
-        </button>
-      </div>
-    </div>
-  );
-};
-```
-
-## 🛡️ Type-Safe Preload API
-
-This template provides **complete type safety** when accessing Electron preload methods from your React components. No more `any` types or runtime errors!
-
-### How It Works
-
-The template implements a robust type safety system:
-
-1. **Single Source of Truth**: All API types are defined in `src/types/electron-api.ts`
-2. **Preload Bridge**: `src/preload.ts` exposes typed methods via `contextBridge`
-3. **Global Types**: `src/types/electron.d.ts` extends the Window interface
-4. **Full IntelliSense**: Get autocomplete and type checking in your React components
-
-### Example Usage
-
-```tsx
-// ✅ Fully typed - IntelliSense works!
-const isDesktop = window.electronAPI.desktop;
-const isMobile = window.electronAPI.mobile;
-const isTablet = window.electronAPI.tablet;
-
-// ✅ TypeScript will catch errors at compile time
-// window.electronAPI.nonExistentMethod; // ❌ TypeScript error
-```
-
-### Adding New API Methods
-
-1. **Define the interface** in `src/types/electron-api.ts`:
-   ```ts
-   export interface ElectronAPI {
-     desktop: boolean;
-     mobile: boolean;
-     tablet: boolean;
-     // Add your new methods here
-     openFile: () => Promise<string>;
-     saveData: (data: string) => Promise<void>;
-   }
-   ```
-
-2. **Implement in preload** in `src/preload.ts`:
-   ```ts
-   const electronAPI: ElectronAPI = {
-     desktop: true,
-     mobile: false,
-     tablet: false,
-     openFile: async () => {
-       // Your implementation
-       return "file-path";
-     },
-     saveData: async (data: string) => {
-       // Your implementation
-     }
-   };
-   ```
-
-3. **Use in React** with full type safety:
-   ```tsx
-   const handleOpenFile = async () => {
-     const filePath = await window.electronAPI.openFile(); // ✅ Typed!
-     // TypeScript knows filePath is a string
-   };
-   ```
-
-## 🔧 Configuration
-
-### Electron Forge
-
-The template includes pre-configured makers for all major platforms:
-
-- **Windows**: Squirrel installer
-- **macOS**: DMG and ZIP
-- **Linux**: DEB and RPM packages
-
-### TypeScript
-
-Full TypeScript support with strict mode enabled and React JSX support.
-
-### Webpack
-
-Optimized webpack configuration with:
-- Hot module replacement
-- TypeScript compilation
-- CSS processing with PostCSS
-- Asset optimization
-
-## 📦 Building for Production
-
-### Create Distributables
+## Development
 
 ```bash
-# Build for current platform
-npm run make
-
-# Build for specific platform
-npm run make -- --targets=@electron-forge/maker-zip
+npm start
 ```
 
-### Available Targets
+This starts the Electron app with Vite hot reload.
 
-- `@electron-forge/maker-zip` - Cross-platform ZIP
-- `@electron-forge/maker-squirrel` - Windows installer
-- `@electron-forge/maker-deb` - Linux DEB package
-- `@electron-forge/maker-rpm` - Linux RPM package
-
-## 🚀 Deployment
-
-### Publishing
+## Build
 
 ```bash
-npm run publish
+npm run package    # Package for current platform
+npm run make       # Create distributables (DMG, ZIP, DEB, RPM)
 ```
 
-Configure publishers in `forge.config.ts` for:
-- GitHub Releases
-- S3
-- Custom servers
+## Data Storage
 
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **EPIPE Error**: This is a known issue with `fork-ts-checker-webpack-plugin`. The template uses `transpileOnly: true` to avoid this.
-
-2. **Build Errors**: Clear build cache:
-   ```bash
-   rm -rf .webpack out node_modules
-   npm install
-   ```
-
-3. **TypeScript Errors**: Run type checking separately:
-   ```bash
-   npx tsc --noEmit
-   ```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License 
-
-## 🙏 Acknowledgments
-
-- [Electron](https://electronjs.org/) - Cross-platform desktop apps
-- [React](https://reactjs.org/) - UI library
-- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
-- [Electron Forge](https://www.electronforge.io/) - Build tooling
-
-## 📞 Support
-
-If you have any questions or need help:
-
-- 🐛 Issues: [GitHub Issues](https://github.com/Mohammed-Yasin-Mulla/Electron-Tailwindv4-React-Template/issues)
-
-
----
-
-⭐ **Star this repository if you find it helpful!** 
+Processed file content is stored in `~/.neutralbase/`. Each file gets a unique directory based on its MD5 hash, containing the analysis output and a status JSON file.

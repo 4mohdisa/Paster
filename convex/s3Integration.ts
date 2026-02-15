@@ -1,6 +1,7 @@
 import { mutation, query, action } from "./_generated/server";
 import { api } from "./_generated/api";
 import { v } from "convex/values";
+import { generateTestPNG } from "./fileGeneration";
 
 // Get upload URL
 export const requestUploadURL = mutation({
@@ -240,6 +241,88 @@ export const deleteS3Object = mutation({
         success: false,
         error: error.message,
         message: "Failed to delete S3 object"
+      };
+    }
+  },
+});
+
+// Generate test file (5MB PNG) and upload to R2 cloud storage
+export const generateTestFile = action({
+  args: {},
+  handler: async (ctx, args) => {
+    try {
+      console.log("🧪 Starting test file generation...");
+
+      // 1. Generate 5MB PNG file
+      const pngData = generateTestPNG();
+      const fileName = `test-file-${Date.now()}.png`;
+
+      console.log(`✅ Generated PNG: ${pngData.length} bytes (${(pngData.length / (1024 * 1024)).toFixed(2)} MB)`);
+
+      // 2. Request presigned upload URL from S3 service
+      const uploadResponse = await fetch("http://localhost:9000/api/s3/generate-upload-url", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          filePath: `/test/${fileName}`,
+          storageType: "cloud", // Always cloud for test files
+          fileName: fileName,
+          contentType: "image/png"
+        }),
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`S3 service error: ${uploadResponse.status}`);
+      }
+
+      const uploadResult = await uploadResponse.json();
+      console.log(`✅ Presigned upload URL generated: ${uploadResult.objectKey}`);
+
+      // 3. Upload PNG to Cloudflare R2
+      const putResponse = await fetch(uploadResult.signedUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "image/png",
+          "Content-Length": pngData.length.toString()
+        },
+        body: pngData,
+      });
+
+      if (!putResponse.ok) {
+        throw new Error(`R2 upload failed: ${putResponse.status}`);
+      }
+
+      console.log(`✅ Uploaded to R2 successfully`);
+
+      // 4. Store metadata in Convex database
+      const objectId = await ctx.db.insert("s3Objects", {
+        objectKey: uploadResult.objectKey,
+        fileName: fileName,
+        fileSize: pngData.length,
+        mimeType: "image/png",
+        storageType: "cloud",
+        timestamp: Date.now(),
+      });
+
+      console.log(`✅ Metadata stored in Convex: ${objectId}`);
+
+      return {
+        success: true,
+        objectKey: uploadResult.objectKey,
+        objectId,
+        fileName: fileName,
+        fileSize: pngData.length,
+        message: "Test file generated and uploaded successfully"
+      };
+
+    } catch (error) {
+      console.error("❌ Test file generation failed:", error);
+      return {
+        success: false,
+        error: error.message,
+        message: "Failed to generate test file"
       };
     }
   },

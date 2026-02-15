@@ -1,0 +1,17 @@
+{
+  "name": "@paster/s3-manager",
+  "version": "1.0.0",
+  "description": "S3 storage manager with local and Cloudflare R2 cloud support",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "convex": "^1.21.0",
+    "dotenv": "^17.2.1",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "electron": "37.2.0"
+  }
+}

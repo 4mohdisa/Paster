@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 # Add Kash to path if installed via py-app-standalone
-kash_env = Path.home() / '.aipaste' / 'kash-env'
+kash_env = Path.home() / '.paster' / 'kash-env'
 if kash_env.exists():
     sys.path.insert(0, str(kash_env))
 
@@ -38,7 +38,7 @@ def run_kash_action(action_name: str, file_path: str):
             }
         
         # Create a FileStore for workspace management
-        workspace_dir = Path.home() / '.aipaste' / 'kash-workspace'
+        workspace_dir = Path.home() / '.paster' / 'kash-workspace'
         workspace_dir.mkdir(parents=True, exist_ok=True)
         store = FileStore(workspace_dir, is_global_ws=True, auto_init=True)
         

@@ -13,7 +13,7 @@ TESTS_PASSED=0
 TESTS_FAILED=0
 
 # CLI binary path - relative to tests directory
-CLI_PATH="../.build/release/AiPasteHelper"
+CLI_PATH="../.build/release/PasterHelper"
 
 # Test result tracking
 declare -a FAILED_TESTS=()
@@ -124,7 +124,7 @@ test_basic_cli() {
     # Test 2: Test command works
     local test_result=$($CLI_PATH test)
     assert_json_field "$test_result" ".success" "true" "Test command returns success"
-    assert_json_field "$test_result" ".message" "AiPasteHelper is working!" "Test command message"
+    assert_json_field "$test_result" ".message" "PasterHelper is working!" "Test command message"
 }
 
 # Test Suite 2: Settings Management
@@ -300,7 +300,7 @@ test_integration() {
 main() {
     echo ""
     echo "============================================"
-    echo "     AiPaste CLI Test Suite"
+    echo "     Paster CLI Test Suite"
     echo "============================================"
     
     # Check prerequisites

@@ -20,7 +20,7 @@ class SettingsManager {
     const isDev = !app.isPackaged;
     if (isDev) {
       // Development: store in project root so it gets cleaned by fresh
-      this.settingsPath = path.join(app.getAppPath(), '.aipaste-settings.json');
+      this.settingsPath = path.join(app.getAppPath(), '.paster-settings.json');
     } else {
       // Production: store in userData
       const userDataPath = app.getPath('userData');

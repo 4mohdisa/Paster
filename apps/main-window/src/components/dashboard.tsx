@@ -1,17 +1,17 @@
 "use client";
 
-import { Badge } from "@aipaste/ui/components/badge";
-import { Button } from "@aipaste/ui/components/button";
+import { Badge } from "@paster/ui/components/badge";
+import { Button } from "@paster/ui/components/button";
 
-import { Alert, AlertDescription } from "@aipaste/ui/components/alert";
-import { Label } from "@aipaste/ui/components/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@aipaste/ui/components/select";
-import { Sidebar, SidebarContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider } from "@aipaste/ui/components/sidebar";
-import { Textarea } from "@aipaste/ui/components/textarea";
+import { Alert, AlertDescription } from "@paster/ui/components/alert";
+import { Label } from "@paster/ui/components/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@paster/ui/components/select";
+import { Sidebar, SidebarContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider } from "@paster/ui/components/sidebar";
+import { Textarea } from "@paster/ui/components/textarea";
 
 import { CheckCircle, FileText, FlaskConical, HelpCircle, Home, Info, RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "@aipaste/ui/components/sonner";
+import { toast } from "@paster/ui/components/sonner";
 import { FileConversionPanel } from "./file-conversion-panel";
 import { HistoryPanel } from "./history-panel";
 
@@ -303,7 +303,7 @@ export default function Dashboard() {
                     <div className="flex-1">
                       <h3 className="font-medium mb-2">Automatic formatting</h3>
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        AiPaste detects table structure and formats it instantly in the background
+                        Paster detects table structure and formats it instantly in the background
                         according to your preferences
                       </p>
                     </div>
@@ -401,11 +401,6 @@ export default function Dashboard() {
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full">
         <Sidebar collapsible="none" className="border-r w-40">
-          {/* <SidebarHeader className="border-b">
-            <div className="flex h-14 items-center px-4">
-              <h2 className="text-lg font-semibold">AiPaste</h2>
-            </div>
-          </SidebarHeader> */}
           <SidebarContent className="p-2">
             <SidebarMenu>
               {sidebarItems.map((item) => (
